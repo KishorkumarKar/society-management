@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/context/AuthContext";
+import AppShell from "@/components/AppShell";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -42,9 +41,7 @@ export default function RootLayout({
         className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} font-sans antialiased`}
       >
         <AuthProvider>
-          <Header />
-          <main>{children}</main>
-          <Footer />
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>

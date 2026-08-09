@@ -1,4 +1,8 @@
-export type UserRole = "admin" | "committee" | "resident" | "security";
+export type UserRole = "super_admin" | "admin" | "committee" | "resident" | "security";
+
+export type EventStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
+export type CollectionStatus = "paid" | "pending" | "waived";
+export type PaymentMethod = "cash" | "upi" | "bank_transfer";
 
 export interface Society {
   id: string;
@@ -47,4 +51,47 @@ export interface Plan {
 
 export interface AuthenticatedUser extends SocietyUser {
   societyName: string;
+}
+
+export interface AdminSessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "super_admin" | "admin";
+  societyId?: string;
+  societyName?: string;
+}
+
+// ── Event Management ──
+export interface SocietyEvent {
+  id: string;
+  societyId: string;
+  name: string;
+  description: string;
+  eventDate: string;
+  status: EventStatus;
+  budget: number;
+  createdAt: string;
+}
+
+export interface EventCollection {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  paidAt: string;
+  method: PaymentMethod;
+  status: CollectionStatus;
+}
+
+export interface EventExpense {
+  id: string;
+  eventId: string;
+  description: string;
+  vendor: string;
+  amount: number;
+  spentAt: string;
+  receiptUrl?: string;
+  category: string;
 }
