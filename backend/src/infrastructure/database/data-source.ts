@@ -13,6 +13,11 @@ import {
   MaintenancePayment,
   RefreshToken,
   AuditLog,
+  HallBooking,
+  Expense,
+  Announcement,
+  AnnouncementTarget,
+  Notification,
 } from '../../domain/entities';
 
 /**
@@ -43,6 +48,11 @@ export const AppDataSource = new DataSource({
     MaintenancePayment,
     RefreshToken,
     AuditLog,
+    HallBooking,
+    Expense,
+    Announcement,
+    AnnouncementTarget,
+    Notification,
   ],
   migrations: [__dirname + '/../../../migrations/*.{ts,js}'],
   migrationsTableName: 'typeorm_migrations',

@@ -5,6 +5,7 @@ import {Permission} from '../../src/domain/entities/permission.entity';
 import {RolePermission} from '../../src/domain/entities/role-permission.entity';
 import {UserRole} from '../../src/domain/entities/user-role.entity';
 import {User} from '../../src/domain/entities/user.entity';
+import {Flat} from '../../src/domain/entities/flat.entity';
 import {hashPassword} from '../../src/modules/auth/password.util';
 import {ALL_PERMISSIONS, PERMISSIONS} from '../../src/modules/acl/permissions.constants';
 
@@ -81,6 +82,23 @@ export async function createUserWithRole(
   );
   await userRoleRepo.save(userRoleRepo.create({user_id: user.id, role_id: roleId}));
   return user;
+}
+
+export async function createFlat(
+  dataSource: DataSource,
+  societyId: number,
+  overrides: Partial<Pick<Flat, 'block' | 'floor' | 'unit_no' | 'sqft'>> = {},
+): Promise<Flat> {
+  const repo = dataSource.getRepository(Flat);
+  return repo.save(
+    repo.create({
+      society_id: societyId,
+      block: overrides.block ?? 'A',
+      floor: overrides.floor ?? '1',
+      unit_no: overrides.unit_no ?? `A-${Date.now()}${Math.floor(Math.random() * 1000)}`,
+      sqft: overrides.sqft ?? '1000.00',
+    }),
+  );
 }
 
 /** Convenience: full-permission role for a given society, for tests that just need "an admin". */

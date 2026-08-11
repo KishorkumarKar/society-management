@@ -33,6 +33,35 @@ export const PERMISSIONS = {
   ROLES_ASSIGN_PERMISSION: 'roles.assign_permission',
 
   PERMISSIONS_VIEW: 'permissions.view',
+
+  HALL_BOOKINGS_VIEW: 'hall_bookings.view',
+  HALL_BOOKINGS_CREATE: 'hall_bookings.create',
+  HALL_BOOKINGS_UPDATE: 'hall_bookings.update',
+  HALL_BOOKINGS_DELETE: 'hall_bookings.delete',
+  HALL_BOOKINGS_APPROVE: 'hall_bookings.approve',
+  HALL_BOOKINGS_REJECT: 'hall_bookings.reject',
+  HALL_BOOKINGS_CANCEL: 'hall_bookings.cancel',
+
+  EXPENSES_VIEW: 'expenses.view',
+  EXPENSES_CREATE: 'expenses.create',
+  EXPENSES_UPDATE: 'expenses.update',
+  EXPENSES_DELETE: 'expenses.delete',
+  EXPENSES_APPROVE: 'expenses.approve',
+
+  ANNOUNCEMENTS_VIEW: 'announcements.view',
+  ANNOUNCEMENTS_CREATE: 'announcements.create',
+  ANNOUNCEMENTS_UPDATE: 'announcements.update',
+  ANNOUNCEMENTS_DELETE: 'announcements.delete',
+  ANNOUNCEMENTS_SEND: 'announcements.send',
+
+  NOTIFICATIONS_VIEW: 'notifications.view',
+  NOTIFICATIONS_CREATE: 'notifications.create',
+  NOTIFICATIONS_UPDATE: 'notifications.update',
+  NOTIFICATIONS_DELETE: 'notifications.delete',
+  NOTIFICATIONS_MARK_READ: 'notifications.mark_read',
+  NOTIFICATIONS_SEND: 'notifications.send',
+  /** Administrative: view/manage notifications belonging to OTHER users in the same society. */
+  NOTIFICATIONS_VIEW_ALL: 'notifications.view_all',
 } as const;
 
 export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

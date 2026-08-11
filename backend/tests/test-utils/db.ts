@@ -21,6 +21,11 @@ export async function initTestDataSource(): Promise<DataSource> {
 
 export async function clearAllTables(dataSource: DataSource): Promise<void> {
   const tables = [
+    'notifications',
+    'announcement_targets',
+    'announcements',
+    'expenses',
+    'hall_bookings',
     'audit_logs',
     'refresh_tokens',
     'maintenance_payments',

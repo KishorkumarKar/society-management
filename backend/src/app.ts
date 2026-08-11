@@ -20,6 +20,10 @@ import {FlatsService} from './modules/flats/flats.service';
 import {MaintenanceService} from './modules/maintenance/maintenance.service';
 import {RolesService} from './modules/roles/roles.service';
 import {PermissionsService} from './modules/permissions/permissions.service';
+import {NotificationService} from './modules/notifications/notification.service';
+import {HallBookingsService} from './modules/hall-bookings/hall-bookings.service';
+import {ExpensesService} from './modules/expenses/expenses.service';
+import {AnnouncementsService} from './modules/announcements/announcements.service';
 
 import {buildAuthRouter} from './modules/auth/auth.controller';
 import {buildUsersRouter} from './modules/users/users.controller';
@@ -28,6 +32,10 @@ import {buildFlatsRouter} from './modules/flats/flats.controller';
 import {buildMaintenanceRouter} from './modules/maintenance/maintenance.controller';
 import {buildRolesRouter} from './modules/roles/roles.controller';
 import {buildPermissionsRouter} from './modules/permissions/permissions.controller';
+import {buildNotificationsRouter} from './modules/notifications/notification.controller';
+import {buildHallBookingsRouter} from './modules/hall-bookings/hall-bookings.controller';
+import {buildExpensesRouter} from './modules/expenses/expenses.controller';
+import {buildAnnouncementsRouter} from './modules/announcements/announcements.controller';
 
 /**
  * Builds a fully-wired Express app from an already-initialized DataSource.
@@ -62,6 +70,10 @@ export function createApp(dataSource: DataSource): Express {
   const maintenanceService = new MaintenanceService(dataSource);
   const rolesService = new RolesService(dataSource, aclService);
   const permissionsService = new PermissionsService(dataSource);
+  const notificationService = new NotificationService(dataSource);
+  const hallBookingsService = new HallBookingsService(dataSource, notificationService);
+  const expensesService = new ExpensesService(dataSource);
+  const announcementsService = new AnnouncementsService(dataSource, notificationService);
 
   app.locals.aclService = aclService;
   app.locals.dataSource = dataSource;
@@ -85,6 +97,10 @@ export function createApp(dataSource: DataSource): Express {
   api.use('/maintenance-bills', buildMaintenanceRouter(maintenanceService));
   api.use('/roles', buildRolesRouter(rolesService));
   api.use('/permissions', buildPermissionsRouter(permissionsService));
+  api.use('/hall-bookings', buildHallBookingsRouter(hallBookingsService));
+  api.use('/expenses', buildExpensesRouter(expensesService));
+  api.use('/announcements', buildAnnouncementsRouter(announcementsService));
+  api.use('/notifications', buildNotificationsRouter(notificationService));
 
   app.use(config.apiPrefix, api);
 

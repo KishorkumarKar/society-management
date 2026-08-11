@@ -9,3 +9,8 @@ export * from './maintenance-bill.entity';
 export * from './maintenance-payment.entity';
 export * from './refresh-token.entity';
 export * from './audit-log.entity';
+export * from './hall-booking.entity';
+export * from './expense.entity';
+export * from './announcement.entity';
+export * from './announcement-target.entity';
+export * from './notification.entity';
