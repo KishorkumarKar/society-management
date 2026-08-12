@@ -1,0 +1,86 @@
+[
+  {
+    "id": "usr-000",
+    "societyId": "platform",
+    "name": "Meera Iyer",
+    "email": "meera.iyer@societyledger.test",
+    "phone": "9000011111",
+    "password": "superadmin123",
+    "role": "super-admin",
+    "unit": "Platform Team",
+    "designation": "Platform Administrator",
+    "initial": "MI"
+  },
+  {
+    "id": "usr-001",
+    "societyId": "soc-greenwood",
+    "name": "Anjali Deshmukh",
+    "email": "anjali.deshmukh@greenwood.test",
+    "phone": "9820011223",
+    "password": "greenwood123",
+    "role": "admin",
+    "unit": "Admin Office",
+    "designation": "Chairperson",
+    "initial": "AD"
+  },
+  {
+    "id": "usr-002",
+    "societyId": "soc-greenwood",
+    "name": "Rohan Kulkarni",
+    "email": "rohan.kulkarni@greenwood.test",
+    "phone": "9820033445",
+    "password": "resident123",
+    "role": "resident",
+    "unit": "B-304",
+    "designation": "General Member",
+    "initial": "RK"
+  },
+  {
+    "id": "usr-003",
+    "societyId": "soc-palmmeadows",
+    "name": "Priya Nair",
+    "email": "priya.nair@palmmeadows.test",
+    "phone": "9945566778",
+    "password": "committee123",
+    "role": "committee",
+    "unit": "Tower 2 - 1102",
+    "designation": "Secretary",
+    "initial": "PN"
+  },
+  {
+    "id": "usr-004",
+    "societyId": "soc-palmmeadows",
+    "name": "Vikram Shetty",
+    "email": "vikram.shetty@palmmeadows.test",
+    "phone": "9945112233",
+    "password": "resident123",
+    "role": "resident",
+    "unit": "Tower 1 - 405",
+    "designation": "General Member",
+    "initial": "VS"
+  },
+  {
+    "id": "usr-005",
+    "societyId": "soc-silveroak",
+    "name": "Karan Malhotra",
+    "email": "karan.malhotra@silveroak.test",
+    "phone": "9911223344",
+    "password": "admin123",
+    "role": "admin",
+    "unit": "Admin Office",
+    "designation": "Chairperson",
+    "initial": "KM"
+  },
+  {
+    "id": "usr-006",
+    "societyId": "soc-silveroak",
+    "name": "Simran Kaur",
+    "email": "simran.kaur@silveroak.test",
+    "phone": "9911556677",
+    "password": "security123",
+    "role": "security",
+    "unit": "Gate 1",
+    "designation": "Security Supervisor",
+    "initial": "SK"
+  }
+]

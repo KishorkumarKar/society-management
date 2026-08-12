@@ -1,0 +1,74 @@
+[
+  {
+    "id": "col-001",
+    "eventId": "evt-001",
+    "societyId": "soc-greenwood",
+    "memberName": "Rohan Kulkarni",
+    "unit": "B-304",
+    "amountDue": 1000,
+    "amountPaid": 1000,
+    "paymentDate": "2026-09-02",
+    "status": "paid",
+    "notes": "Paid via UPI"
+  },
+  {
+    "id": "col-002",
+    "eventId": "evt-001",
+    "societyId": "soc-greenwood",
+    "memberName": "Anjali Deshmukh",
+    "unit": "A-101",
+    "amountDue": 1000,
+    "amountPaid": 500,
+    "paymentDate": "2026-09-04",
+    "status": "partial",
+    "notes": "Balance to follow next week"
+  },
+  {
+    "id": "col-003",
+    "eventId": "evt-001",
+    "societyId": "soc-greenwood",
+    "memberName": "Sunita Rao",
+    "unit": "C-208",
+    "amountDue": 1000,
+    "amountPaid": 0,
+    "paymentDate": "",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "id": "col-004",
+    "eventId": "evt-002",
+    "societyId": "soc-greenwood",
+    "memberName": "Rohan Kulkarni",
+    "unit": "B-304",
+    "amountDue": 500,
+    "amountPaid": 500,
+    "paymentDate": "2026-08-05",
+    "status": "paid",
+    "notes": ""
+  },
+  {
+    "id": "col-005",
+    "eventId": "evt-003",
+    "societyId": "soc-palmmeadows",
+    "memberName": "Vikram Shetty",
+    "unit": "Tower 1 - 405",
+    "amountDue": 1500,
+    "amountPaid": 1500,
+    "paymentDate": "2026-10-20",
+    "status": "paid",
+    "notes": "Cash collected at clubhouse desk"
+  },
+  {
+    "id": "col-006",
+    "eventId": "evt-003",
+    "societyId": "soc-palmmeadows",
+    "memberName": "Priya Nair",
+    "unit": "Tower 2 - 1102",
+    "amountDue": 1500,
+    "amountPaid": 0,
+    "paymentDate": "",
+    "status": "pending",
+    "notes": ""
+  }
+]

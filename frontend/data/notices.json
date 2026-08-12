@@ -1,0 +1,34 @@
+[
+  {
+    "id": "nb-01",
+    "societyId": "soc-greenwood",
+    "title": "Annual water tank cleaning — Block B",
+    "category": "Maintenance",
+    "date": "2026-08-10",
+    "body": "Water supply to Block B will be suspended between 10 AM and 2 PM while the overhead tank is cleaned."
+  },
+  {
+    "id": "nb-02",
+    "societyId": "soc-greenwood",
+    "title": "Independence Day flag hoisting",
+    "category": "Event",
+    "date": "2026-08-15",
+    "body": "Flag hoisting at the central lawn at 8 AM, followed by breakfast hosted by the committee."
+  },
+  {
+    "id": "nb-03",
+    "societyId": "soc-palmmeadows",
+    "title": "AGM scheduled for September",
+    "category": "Governance",
+    "date": "2026-09-05",
+    "body": "The Annual General Meeting will be held in the clubhouse. Agenda to follow by email."
+  },
+  {
+    "id": "nb-04",
+    "societyId": "soc-silveroak",
+    "title": "New visitor gate policy from Gate 1",
+    "category": "Security",
+    "date": "2026-08-12",
+    "body": "All visitors must be pre-approved through the resident app before entry starting this week."
+  }
+]

@@ -1,0 +1,67 @@
+[
+  {
+    "role": "super-admin",
+    "label": "Super Admin",
+    "permissions": {
+      "Users": ["view", "create", "edit", "delete"],
+      "Notices": ["view", "create", "edit", "delete"],
+      "Events": ["view", "create", "edit", "delete"],
+      "Collections": ["view", "create", "edit", "delete"],
+      "Expenses": ["view", "create", "edit", "delete"],
+      "Societies": ["view", "create", "edit", "delete"],
+      "ACL": ["view", "edit"]
+    }
+  },
+  {
+    "role": "admin",
+    "label": "Society Admin",
+    "permissions": {
+      "Users": ["view", "create", "edit", "delete"],
+      "Notices": ["view", "create", "edit", "delete"],
+      "Events": ["view", "create", "edit", "delete"],
+      "Collections": ["view", "create", "edit", "delete"],
+      "Expenses": ["view", "create", "edit", "delete"],
+      "Societies": ["view"],
+      "ACL": []
+    }
+  },
+  {
+    "role": "committee",
+    "label": "Committee Member",
+    "permissions": {
+      "Users": ["view"],
+      "Notices": ["view", "create"],
+      "Events": ["view", "create", "edit"],
+      "Collections": ["view", "create", "edit"],
+      "Expenses": ["view", "create", "edit"],
+      "Societies": [],
+      "ACL": []
+    }
+  },
+  {
+    "role": "resident",
+    "label": "Resident",
+    "permissions": {
+      "Users": [],
+      "Notices": ["view"],
+      "Events": ["view"],
+      "Collections": ["view"],
+      "Expenses": ["view"],
+      "Societies": [],
+      "ACL": []
+    }
+  },
+  {
+    "role": "security",
+    "label": "Security Desk",
+    "permissions": {
+      "Users": [],
+      "Notices": ["view"],
+      "Events": ["view"],
+      "Collections": [],
+      "Expenses": [],
+      "Societies": [],
+      "ACL": []
+    }
+  }
+]

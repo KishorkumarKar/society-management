@@ -1,0 +1,52 @@
+[
+  {
+    "id": "plan-starter",
+    "name": "Starter",
+    "tagline": "For a single small society finding its footing",
+    "price": 1499,
+    "billing": "per month, billed annually",
+    "unitCap": "Up to 75 units",
+    "features": [
+      "Resident & committee directory",
+      "Digital noticeboard",
+      "Maintenance billing (1 society)",
+      "Visitor log book",
+      "Email support"
+    ],
+    "highlighted": false
+  },
+  {
+    "id": "plan-growth",
+    "name": "Growth",
+    "tagline": "For societies with active committees and vendors",
+    "price": 3499,
+    "billing": "per month, billed annually",
+    "unitCap": "Up to 300 units",
+    "features": [
+      "Everything in Starter",
+      "Multi-block & wing management",
+      "Complaint ticketing with SLAs",
+      "Facility & amenity booking",
+      "Vendor & staff attendance",
+      "Priority support"
+    ],
+    "highlighted": true
+  },
+  {
+    "id": "plan-enterprise",
+    "name": "Federation",
+    "tagline": "For management groups running several societies",
+    "price": null,
+    "billing": "custom pricing",
+    "unitCap": "Unlimited societies & units",
+    "features": [
+      "Everything in Growth",
+      "Multi-society console (this app)",
+      "Consolidated financial reporting",
+      "Role-based access across societies",
+      "Dedicated onboarding manager",
+      "99.9% uptime SLA"
+    ],
+    "highlighted": false
+  }
+]
