@@ -1,87 +1,156 @@
 "use client";
 
+import { Building2, Users, Bell, DoorOpen } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getAllSocieties, getAllUsers, getAllNotices } from "@/lib/data";
-import { Building2, Users, Bell, TrendingUp } from "lucide-react";
+import { useData } from "@/context/DataContext";
+import { findSocietyById, usersBySociety, noticesBySociety } from "@/lib/data";
+import PageHeader from "@/components/admin/PageHeader";
+import StatCard from "@/components/admin/StatCard";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
 
-export default function AdminDashboard() {
-  const { admin } = useAuth();
-  const isSuperAdmin = admin?.role === "super_admin";
+export default function AdminOverviewPage() {
+  const { user } = useAuth();
+  const { societies, users, notices } = useData();
 
-  const societies = getAllSocieties();
-  const allUsers = getAllUsers();
-  const allNotices = getAllNotices();
+  if (!user) return null;
 
-  const stats = isSuperAdmin
-    ? [
-        { label: "Total Societies", value: societies.length, icon: <Building2 size={20} />, color: "bg-brass/10 text-brass" },
-        { label: "Total Users", value: allUsers.length, icon: <Users size={20} />, color: "bg-sage/10 text-sage" },
-        { label: "Total Notices", value: allNotices.length, icon: <Bell size={20} />, color: "bg-rust/10 text-rust" },
-        { label: "Occupancy Rate", value: "87%", icon: <TrendingUp size={20} />, color: "bg-ink/10 text-ink" },
-      ]
-    : [
-        { label: "Society Users", value: allUsers.filter((u) => u.societyId === admin?.societyId).length, icon: <Users size={20} />, color: "bg-sage/10 text-sage" },
-        { label: "Notices", value: allNotices.filter((n) => n.societyId === admin?.societyId).length, icon: <Bell size={20} />, color: "bg-rust/10 text-rust" },
-        { label: "Committee", value: allUsers.filter((u) => u.societyId === admin?.societyId && u.role === "committee").length, icon: <Users size={20} />, color: "bg-brass/10 text-brass" },
-        { label: "Residents", value: allUsers.filter((u) => u.societyId === admin?.societyId && u.role === "resident").length, icon: <Users size={20} />, color: "bg-ink/10 text-ink" },
-      ];
+  const isSuperAdmin = user.role === "super-admin";
 
-  return (
-    <div>
-      <div className="mb-8">
-        <h1 className="font-display text-2xl italic text-ink">Dashboard</h1>
-        <p className="text-sm text-muted mt-1">
-          Welcome back, {admin?.name}. Here is what is happening {isSuperAdmin ? "across all societies" : "in your society"}.
-        </p>
-      </div>
+  if (isSuperAdmin) {
+    const totalUnits = societies.reduce((sum, s) => sum + s.totalUnits, 0);
+    const occupiedUnits = societies.reduce((sum, s) => sum + s.occupiedUnits, 0);
+    const occupancy = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+    const recentNotices = [...notices]
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 5);
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
-          <div key={s.label} className="bg-white border border-paper-dim p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted">{s.label}</p>
-                <p className="text-2xl font-semibold text-ink mt-1">{s.value}</p>
-              </div>
-              <div className={`p-2.5 rounded ${s.color}`}>{s.icon}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+    return (
+      <div className="flex flex-col gap-8">
+        <PageHeader
+          title="Platform overview"
+          description="Every society on the network, at a glance."
+        />
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-paper-dim p-5">
-          <h2 className="font-display text-lg italic text-ink mb-4">Recent Notices</h2>
-          <div className="space-y-3">
-            {allNotices.slice(0, 5).map((n) => (
-              <div key={n.id} className="flex items-start gap-3 pb-3 border-b border-paper-dim last:border-0 last:pb-0">
-                <div className="w-2 h-2 rounded-full bg-brass mt-1.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-ink">{n.title}</p>
-                  <p className="text-xs text-muted">{n.category} · {n.date}</p>
-                </div>
-              </div>
-            ))}
-            {allNotices.length === 0 && <p className="text-sm text-muted">No notices yet.</p>}
-          </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Societies" value={societies.length.toString()} icon={Building2} />
+          <StatCard label="Registered users" value={users.length.toString()} icon={Users} />
+          <StatCard label="Active notices" value={notices.length.toString()} icon={Bell} />
+          <StatCard
+            label="Occupancy"
+            value={`${occupancy}%`}
+            hint={`${occupiedUnits} / ${totalUnits} units`}
+            icon={DoorOpen}
+          />
         </div>
 
-        <div className="bg-white border border-paper-dim p-5">
-          <h2 className="font-display text-lg italic text-ink mb-4">Recent Users</h2>
-          <div className="space-y-3">
-            {allUsers.slice(0, 5).map((u) => (
-              <div key={u.id} className="flex items-center justify-between pb-3 border-b border-paper-dim last:border-0 last:pb-0">
-                <div>
-                  <p className="text-sm font-medium text-ink">{u.name}</p>
-                  <p className="text-xs text-muted">{u.email} · {u.role}</p>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+          <div className="flex flex-col gap-4 lg:col-span-3">
+            <h2 className="font-display text-xl text-ink">Societies</h2>
+            <Card className="divide-y divide-ink/10 p-0">
+              {societies.map((society) => (
+                <div key={society.id} className="flex items-center justify-between gap-4 p-5">
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-ink font-display text-xs text-brass">
+                      {society.initial}
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-ink">{society.name}</span>
+                      <span className="text-xs text-ink/50">{society.city}</span>
+                    </div>
+                  </div>
+                  <span className="font-mono text-xs text-ink/40">
+                    {society.occupiedUnits}/{society.totalUnits} units
+                  </span>
                 </div>
-                <span className="text-xs px-2 py-0.5 bg-ink/5 text-ink rounded">{u.unit}</span>
+              ))}
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            <h2 className="font-display text-xl text-ink">Recent notices</h2>
+            <Card className="divide-y divide-ink/10 p-0">
+              {recentNotices.length === 0 && (
+                <p className="p-5 text-sm text-ink/50">No notices yet.</p>
+              )}
+              {recentNotices.map((notice) => (
+                <div key={notice.id} className="flex flex-col gap-1.5 p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <Badge tone="brass">{notice.category}</Badge>
+                    <span className="font-mono text-xs text-ink/40">{notice.date}</span>
+                  </div>
+                  <span className="text-sm text-ink">{notice.title}</span>
+                </div>
+              ))}
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const society = findSocietyById(societies, user.societyId);
+  const members = usersBySociety(users, user.societyId);
+  const noticeList = noticesBySociety(notices, user.societyId);
+  const occupancy =
+    society && society.totalUnits > 0
+      ? Math.round((society.occupiedUnits / society.totalUnits) * 100)
+      : 0;
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={`Welcome back, ${user.name.split(" ")[0]}`}
+        description={society?.name ?? "Your society"}
+      />
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Units" value={`${society?.totalUnits ?? 0}`} icon={Building2} />
+        <StatCard
+          label="Occupied"
+          value={`${occupancy}%`}
+          hint={`${society?.occupiedUnits ?? 0} of ${society?.totalUnits ?? 0}`}
+          icon={DoorOpen}
+        />
+        <StatCard label="Members" value={members.length.toString()} icon={Users} />
+        <StatCard label="Notices" value={noticeList.length.toString()} icon={Bell} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+        <div className="flex flex-col gap-4 lg:col-span-3">
+          <h2 className="font-display text-xl text-ink">Noticeboard</h2>
+          <Card className="divide-y divide-ink/10 p-0">
+            {noticeList.length === 0 && (
+              <p className="p-5 text-sm text-ink/50">Nothing pinned yet.</p>
+            )}
+            {noticeList.map((notice) => (
+              <div key={notice.id} className="flex flex-col gap-1.5 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <Badge tone="brass">{notice.category}</Badge>
+                  <span className="font-mono text-xs text-ink/40">{notice.date}</span>
+                </div>
+                <span className="text-sm font-medium text-ink">{notice.title}</span>
+                <p className="text-sm text-ink/60">{notice.body}</p>
               </div>
             ))}
-            {allUsers.length === 0 && <p className="text-sm text-muted">No users yet.</p>}
-          </div>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <h2 className="font-display text-xl text-ink">Members</h2>
+          <Card className="divide-y divide-ink/10 p-0">
+            {members.map((member) => (
+              <div key={member.id} className="flex items-center gap-4 p-5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-ink font-display text-xs text-brass">
+                  {member.initial}
+                </span>
+                <div className="flex flex-1 flex-col">
+                  <span className="text-sm font-medium text-ink">{member.name}</span>
+                  <span className="text-xs text-ink/50">{member.designation} · {member.unit}</span>
+                </div>
+              </div>
+            ))}
+          </Card>
         </div>
       </div>
     </div>

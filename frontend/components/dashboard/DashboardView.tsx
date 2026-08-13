@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getSocietyById, getUsersBySociety, getNoticesBySociety, roleLabel } from "@/lib/data";
+import { useData } from "@/context/DataContext";
+import { findSocietyById, usersBySociety, noticesBySociety, roleLabel, canAccessConsole, dashboardPathForRole } from "@/lib/data";
 import Container from "@/components/ui/Container";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -10,7 +12,14 @@ import Button from "@/components/ui/Button";
 
 export default function DashboardView() {
   const { user, logout, isLoading } = useAuth();
+  const { societies, users, notices } = useData();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && user && canAccessConsole(user.role)) {
+      router.replace(dashboardPathForRole(user.role));
+    }
+  }, [isLoading, user, router]);
 
   if (isLoading) {
     return (
@@ -31,9 +40,17 @@ export default function DashboardView() {
     );
   }
 
-  const society = getSocietyById(user.societyId);
-  const members = getUsersBySociety(user.societyId);
-  const noticeList = getNoticesBySociety(user.societyId);
+  if (canAccessConsole(user.role)) {
+    return (
+      <Container className="py-24 text-center text-ink/50">
+        Redirecting to the admin console…
+      </Container>
+    );
+  }
+
+  const society = findSocietyById(societies, user.societyId);
+  const members = usersBySociety(users, user.societyId);
+  const noticeList = noticesBySociety(notices, user.societyId);
 
   function handleLogout() {
     logout();
@@ -118,7 +135,7 @@ export default function DashboardView() {
                 <div className="flex flex-1 flex-col">
                   <span className="text-sm font-medium text-ink">{member.name}</span>
                   <span className="text-xs text-ink/50">
-                    {roleLabel(member.role)} · {member.unit}
+                    {member.designation} · {member.unit}
                   </span>
                 </div>
               </div>

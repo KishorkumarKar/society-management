@@ -14,7 +14,7 @@ export default function Stats() {
   ];
 
   return (
-    <section className="border-y border-ink/10 bg-paper-dim bg-paper">
+    <section className="border-y border-ink/10 bg-paper">
       <Container className="grid grid-cols-2 divide-x divide-y divide-ink/10 border-l border-t border-ink/10 sm:grid-cols-4 sm:divide-y-0">
         {stats.map((stat) => (
           <div key={stat.label} className="flex flex-col gap-2 border-b border-r border-ink/10 px-6 py-8">

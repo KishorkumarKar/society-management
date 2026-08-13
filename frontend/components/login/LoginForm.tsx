@@ -2,14 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { societies } from "@/lib/data";
+import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
+import { dashboardPathForRole } from "@/lib/data";
+import { PLATFORM_SCOPE } from "@/lib/types";
 import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
 export default function LoginForm() {
   const router = useRouter();
+  const { societies } = useData();
   const { login } = useAuth();
 
   const [societyId, setSocietyId] = useState("");
@@ -25,13 +28,13 @@ export default function LoginForm() {
 
     const result = login(societyId, identifier, password);
 
-    if (!result.success) {
+    if (!result.success || !result.user) {
       setError(result.message ?? "Unable to sign in. Please try again.");
       setSubmitting(false);
       return;
     }
 
-    router.push("/dashboard");
+    router.push(dashboardPathForRole(result.user.role));
   }
 
   return (
@@ -51,6 +54,7 @@ export default function LoginForm() {
             {society.name} — {society.city}
           </option>
         ))}
+        <option value={PLATFORM_SCOPE}>Platform — Super Admin (all societies)</option>
       </Select>
 
       <Input

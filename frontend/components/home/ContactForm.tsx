@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Input from "@/components/ui/Input";
+import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 
 export default function ContactForm() {
@@ -37,18 +38,13 @@ export default function ContactForm() {
       />
       <Input id="email" label="Email" type="email" required />
       <Input id="society-name" label="Society name (optional)" />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="message" className="font-mono text-xs uppercase tracking-wider text-ink/60">
-          Message
-        </label>
-        <textarea
-          id="message"
-          required
-          rows={5}
-          className="resize-none rounded-sm border border-ink/15 bg-paper px-4 py-3 text-ink placeholder:text-ink/30 focus:border-brass focus:outline-none focus:ring-1 focus:ring-brass"
-          placeholder="Tell us about your society and what you're looking for."
-        />
-      </div>
+      <Textarea
+        id="message"
+        label="Message"
+        required
+        rows={5}
+        placeholder="Tell us about your society and what you're looking for."
+      />
       <Button type="submit" variant="primary" className="w-fit">
         Send message
       </Button>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
+import { dashboardPathForRole } from "@/lib/data";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -18,6 +19,12 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { user } = useAuth();
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
+  const dashboardHref = user ? dashboardPathForRole(user.role) : "/login";
 
   return (
     <header className="sticky top-0 z-50 border-b border-paper/10 bg-ink/95 backdrop-blur">
@@ -49,15 +56,9 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          {user ? (
-            <Button href="/dashboard" variant="primary">
-              Dashboard
-            </Button>
-          ) : (
-            <Button href="/login" variant="primary">
-              Resident Login
-            </Button>
-          )}
+          <Button href={dashboardHref} variant="primary">
+            {user ? "Dashboard" : "Resident Login"}
+          </Button>
         </div>
 
         <button
@@ -91,7 +92,7 @@ export default function Header() {
               </Link>
             ))}
             <div className="mt-2">
-              <Button href={user ? "/dashboard" : "/login"} variant="primary" className="w-full">
+              <Button href={dashboardHref} variant="primary" className="w-full">
                 {user ? "Dashboard" : "Resident Login"}
               </Button>
             </div>

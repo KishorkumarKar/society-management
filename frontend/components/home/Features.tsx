@@ -34,9 +34,9 @@ const FEATURES = [
   },
   {
     code: "NB-16",
-    title: "Multi-society console",
+    title: "Multi-society admin console",
     description:
-      "Manage several societies from one sign-in without ever mixing up one committee's data with another's.",
+      "Society admins manage their own book; a super admin oversees every society from one role-based panel.",
   },
 ];
 

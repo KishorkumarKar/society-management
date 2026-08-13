@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Fraunces, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import { DataProvider } from "@/context/DataContext";
 import { AuthProvider } from "@/context/AuthContext";
-import AppShell from "@/components/AppShell";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -30,19 +32,19 @@ export const metadata: Metadata = {
     "A single console for managing residents, notices and ledgers across multiple housing societies.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body
         className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} font-sans antialiased`}
       >
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <DataProvider>
+          <AuthProvider>
+            <Header />
+            <main>{children}</main>
+            <Footer />
+          </AuthProvider>
+        </DataProvider>
       </body>
     </html>
   );
