@@ -1,0 +1,42 @@
+[
+  {
+    "id": "evt-001",
+    "societyId": "soc-greenwood",
+    "name": "Halloween Bash 2026",
+    "description": "Costume contest, games and a haunted-house walk for kids in the central lawn.",
+    "date": "2026-10-31",
+    "status": "upcoming",
+    "targetAmount": 45000,
+    "createdBy": "usr-001"
+  },
+  {
+    "id": "evt-002",
+    "societyId": "soc-greenwood",
+    "name": "Independence Day Flag Hoisting",
+    "description": "Flag hoisting, breakfast and a cultural programme by resident kids.",
+    "date": "2026-08-15",
+    "status": "completed",
+    "targetAmount": 15000,
+    "createdBy": "usr-001"
+  },
+  {
+    "id": "evt-003",
+    "societyId": "soc-palmmeadows",
+    "name": "Diwali Mela",
+    "description": "Stalls, diya decoration contest and a community dinner in the clubhouse.",
+    "date": "2026-11-08",
+    "status": "upcoming",
+    "targetAmount": 60000,
+    "createdBy": "usr-003"
+  },
+  {
+    "id": "evt-004",
+    "societyId": "soc-silveroak",
+    "name": "New Year's Eve Gathering",
+    "description": "Rooftop gathering with music and a midnight countdown for residents.",
+    "date": "2026-12-31",
+    "status": "upcoming",
+    "targetAmount": 80000,
+    "createdBy": "usr-005"
+  }
+]

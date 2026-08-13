@@ -1,0 +1,46 @@
+[
+  {
+    "id": "exp-001",
+    "eventId": "evt-001",
+    "societyId": "soc-greenwood",
+    "title": "Costume contest prizes",
+    "category": "Prizes",
+    "amount": 6000,
+    "date": "2026-09-10",
+    "paidTo": "Party Bazaar",
+    "notes": "3 prize hampers"
+  },
+  {
+    "id": "exp-002",
+    "eventId": "evt-001",
+    "societyId": "soc-greenwood",
+    "title": "Decoration & lighting",
+    "category": "Decor",
+    "amount": 9500,
+    "date": "2026-09-15",
+    "paidTo": "Bright Events Co.",
+    "notes": "Cobwebs, pumpkins, string lights"
+  },
+  {
+    "id": "exp-003",
+    "eventId": "evt-002",
+    "societyId": "soc-greenwood",
+    "title": "Breakfast catering",
+    "category": "Catering",
+    "amount": 8000,
+    "date": "2026-08-14",
+    "paidTo": "Annapurna Caterers",
+    "notes": "Poha, jalebi and tea for ~150 residents"
+  },
+  {
+    "id": "exp-004",
+    "eventId": "evt-003",
+    "societyId": "soc-palmmeadows",
+    "title": "Stall setup & tents",
+    "category": "Logistics",
+    "amount": 14000,
+    "date": "2026-10-28",
+    "paidTo": "Shree Tent House",
+    "notes": ""
+  }
+]
