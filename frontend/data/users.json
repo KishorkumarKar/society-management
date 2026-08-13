@@ -1,5 +1,17 @@
 [
   {
+    "id": "usr-000",
+    "societyId": "platform",
+    "name": "Meera Iyer",
+    "email": "meera.iyer@societyledger.test",
+    "phone": "9000011111",
+    "password": "superadmin123",
+    "role": "super-admin",
+    "unit": "Platform Team",
+    "designation": "Platform Administrator",
+    "initial": "MI"
+  },
+  {
     "id": "usr-001",
     "societyId": "soc-greenwood",
     "name": "Anjali Deshmukh",
@@ -8,6 +20,7 @@
     "password": "greenwood123",
     "role": "admin",
     "unit": "Admin Office",
+    "designation": "Chairperson",
     "initial": "AD"
   },
   {
@@ -19,6 +32,7 @@
     "password": "resident123",
     "role": "resident",
     "unit": "B-304",
+    "designation": "General Member",
     "initial": "RK"
   },
   {
@@ -30,6 +44,7 @@
     "password": "committee123",
     "role": "committee",
     "unit": "Tower 2 - 1102",
+    "designation": "Secretary",
     "initial": "PN"
   },
   {
@@ -41,6 +56,7 @@
     "password": "resident123",
     "role": "resident",
     "unit": "Tower 1 - 405",
+    "designation": "General Member",
     "initial": "VS"
   },
   {
@@ -52,6 +68,7 @@
     "password": "admin123",
     "role": "admin",
     "unit": "Admin Office",
+    "designation": "Chairperson",
     "initial": "KM"
   },
   {
@@ -63,6 +80,19 @@
     "password": "security123",
     "role": "security",
     "unit": "Gate 1",
+    "designation": "Security Supervisor",
     "initial": "SK"
+  },
+  {
+    "id": "usr-007",
+    "societyId": "soc-silveroak",
+    "name": "Neha Kapoor",
+    "email": "neha.kapoor@silveroak.test",
+    "phone": "9911667788",
+    "password": "resident123",
+    "role": "resident",
+    "unit": "B-1204",
+    "designation": "General Member",
+    "initial": "NK"
   }
 ]
