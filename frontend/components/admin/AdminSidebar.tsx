@@ -15,6 +15,10 @@ import {
   Wallet,
   Receipt,
   ShieldCheck,
+  Shield,
+  UserCog,
+  Clock,
+  ScanFace,
   ChevronDown,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types";
@@ -96,6 +100,37 @@ const NAV_ITEMS: NavEntry[] = [
     label: "Societies",
     icon: Building2,
     roles: ["super-admin"],
+  },
+  {
+    label: "Security",
+    icon: Shield,
+    roles: ["admin", "super-admin", "security"],
+    children: [
+      {
+        href: "/admin/dashboard/security",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        roles: ["admin", "super-admin", "security"],
+      },
+      {
+        href: "/admin/dashboard/security/guards",
+        label: "Guards",
+        icon: UserCog,
+        roles: ["admin", "super-admin"],
+      },
+      {
+        href: "/admin/dashboard/security/shifts",
+        label: "Shifts",
+        icon: Clock,
+        roles: ["admin", "super-admin"],
+      },
+      {
+        href: "/admin/dashboard/security/visitors",
+        label: "Visitors",
+        icon: ScanFace,
+        roles: ["admin", "super-admin", "security"],
+      },
+    ],
   },
   {
     href: "/admin/dashboard/acl",

@@ -1,0 +1,93 @@
+[
+  {
+    "id": "sft-001",
+    "societyId": "soc-greenwood",
+    "shiftName": "Day Shift",
+    "shiftType": "12H",
+    "startTime": "06:00",
+    "endTime": "18:00",
+    "durationHours": 12,
+    "guardId": "grd-001",
+    "shiftDate": "2026-08-13",
+    "status": "active",
+    "remarks": ""
+  },
+  {
+    "id": "sft-002",
+    "societyId": "soc-greenwood",
+    "shiftName": "Night Shift",
+    "shiftType": "12H",
+    "startTime": "18:00",
+    "endTime": "06:00",
+    "durationHours": 12,
+    "guardId": "grd-002",
+    "shiftDate": "2026-08-13",
+    "status": "scheduled",
+    "remarks": ""
+  },
+  {
+    "id": "sft-003",
+    "societyId": "soc-greenwood",
+    "shiftName": "Morning Shift",
+    "shiftType": "8H",
+    "startTime": "06:00",
+    "endTime": "14:00",
+    "durationHours": 8,
+    "guardId": "grd-001",
+    "shiftDate": "2026-08-14",
+    "status": "scheduled",
+    "remarks": ""
+  },
+  {
+    "id": "sft-004",
+    "societyId": "soc-palmmeadows",
+    "shiftName": "Day Shift",
+    "shiftType": "12H",
+    "startTime": "06:00",
+    "endTime": "18:00",
+    "durationHours": 12,
+    "guardId": "grd-003",
+    "shiftDate": "2026-08-13",
+    "status": "active",
+    "remarks": ""
+  },
+  {
+    "id": "sft-005",
+    "societyId": "soc-palmmeadows",
+    "shiftName": "Half Day - Afternoon",
+    "shiftType": "HALF_DAY",
+    "startTime": "12:00",
+    "endTime": "18:00",
+    "durationHours": 6,
+    "guardId": "grd-004",
+    "shiftDate": "2026-08-13",
+    "status": "completed",
+    "remarks": "Covered gate 2 only"
+  },
+  {
+    "id": "sft-006",
+    "societyId": "soc-silveroak",
+    "shiftName": "Night Shift",
+    "shiftType": "12H",
+    "startTime": "18:00",
+    "endTime": "06:00",
+    "durationHours": 12,
+    "guardId": "grd-005",
+    "shiftDate": "2026-08-12",
+    "status": "completed",
+    "remarks": ""
+  },
+  {
+    "id": "sft-007",
+    "societyId": "soc-silveroak",
+    "shiftName": "Day Shift",
+    "shiftType": "12H",
+    "startTime": "06:00",
+    "endTime": "18:00",
+    "durationHours": 12,
+    "guardId": "grd-006",
+    "shiftDate": "2026-08-13",
+    "status": "active",
+    "remarks": ""
+  }
+]

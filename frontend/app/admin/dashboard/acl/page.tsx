@@ -7,7 +7,7 @@ import RequireRole from "@/components/admin/RequireRole";
 import PageHeader from "@/components/admin/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import type { AclAction, AclModule } from "@/lib/types";
+import { MODULE_ACTIONS, type AclModule } from "@/lib/types";
 
 const MODULES: AclModule[] = [
   "Users",
@@ -16,18 +16,23 @@ const MODULES: AclModule[] = [
   "Collections",
   "Expenses",
   "Societies",
+  "Security Guards",
+  "Security Shifts",
+  "Visitors",
   "ACL",
 ];
-
-const ACTIONS: AclAction[] = ["view", "create", "edit", "delete"];
 
 /**
  * Renders the permission grid for exactly one module. Only the active tab's
  * instance of this component is mounted at a time — switching tabs unmounts
- * the previous module's table rather than keeping all seven in the DOM.
+ * the previous module's table rather than keeping all ten in the DOM. The
+ * action columns themselves come from MODULE_ACTIONS, so a module like ACL
+ * (view/edit only) or Visitors (which adds mark_in/mark_out) never renders
+ * a toggle for an action it doesn't actually support.
  */
 function AclModuleTable({ moduleName }: { moduleName: AclModule }) {
   const { aclMatrix, toggleAclPermission } = useData();
+  const actions = MODULE_ACTIONS[moduleName];
 
   return (
     <Card className="overflow-x-auto p-0">
@@ -35,9 +40,9 @@ function AclModuleTable({ moduleName }: { moduleName: AclModule }) {
         <thead>
           <tr className="border-b border-ink/10 bg-ink/[0.03] font-mono text-[11px] uppercase tracking-wider text-ink/50">
             <th className="px-5 py-3 font-medium">Role</th>
-            {ACTIONS.map((action) => (
+            {actions.map((action) => (
               <th key={action} className="px-5 py-3 text-center font-medium">
-                {action}
+                {action.replace("_", " ")}
               </th>
             ))}
           </tr>
@@ -50,7 +55,7 @@ function AclModuleTable({ moduleName }: { moduleName: AclModule }) {
             return (
               <tr key={entry.role} className="transition-colors hover:bg-ink/[0.02]">
                 <td className="px-5 py-3 font-medium text-ink">{entry.label}</td>
-                {ACTIONS.map((action) => {
+                {actions.map((action) => {
                   const granted = allowed.includes(action);
                   return (
                     <td key={action} className="px-2 py-2 text-center">

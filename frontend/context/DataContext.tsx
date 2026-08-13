@@ -16,7 +16,12 @@ import {
   collections as initialCollections,
   expenses as initialExpenses,
   aclMatrix as initialAclMatrix,
+  guards as initialGuards,
+  shifts as initialShifts,
+  visitors as initialVisitors,
   generateId,
+  todayISODate,
+  nowHHMM,
 } from "@/lib/data";
 import type {
   Society,
@@ -29,6 +34,9 @@ import type {
   AclModule,
   AclAction,
   UserRole,
+  SecurityGuard,
+  SecurityShift,
+  Visitor,
 } from "@/lib/types";
 
 interface DataContextValue {
@@ -38,6 +46,9 @@ interface DataContextValue {
   events: SocietyEvent[];
   collections: EventCollection[];
   expenses: EventExpense[];
+  guards: SecurityGuard[];
+  shifts: SecurityShift[];
+  visitors: Visitor[];
 
   addSociety: (input: Omit<Society, "id">) => Society;
   updateSociety: (id: string, input: Omit<Society, "id">) => void;
@@ -63,6 +74,19 @@ interface DataContextValue {
   updateExpense: (id: string, input: Omit<EventExpense, "id">) => void;
   deleteExpense: (id: string) => void;
 
+  addGuard: (input: Omit<SecurityGuard, "id">) => SecurityGuard;
+  updateGuard: (id: string, input: Omit<SecurityGuard, "id">) => void;
+  deleteGuard: (id: string) => void;
+
+  addShift: (input: Omit<SecurityShift, "id">) => SecurityShift;
+  updateShift: (id: string, input: Omit<SecurityShift, "id">) => void;
+  deleteShift: (id: string) => void;
+
+  addVisitor: (input: Omit<Visitor, "id">) => Visitor;
+  updateVisitor: (id: string, input: Omit<Visitor, "id">) => void;
+  deleteVisitor: (id: string) => void;
+  markVisitorOut: (id: string) => void;
+
   aclMatrix: AclRoleEntry[];
   toggleAclPermission: (role: UserRole, module: AclModule, action: AclAction) => void;
   resetAcl: () => void;
@@ -82,6 +106,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<SocietyEvent[]>(initialEvents);
   const [collections, setCollections] = useState<EventCollection[]>(initialCollections);
   const [expenses, setExpenses] = useState<EventExpense[]>(initialExpenses);
+  const [guards, setGuards] = useState<SecurityGuard[]>(initialGuards);
+  const [shifts, setShifts] = useState<SecurityShift[]>(initialShifts);
+  const [visitors, setVisitors] = useState<Visitor[]>(initialVisitors);
   const [aclMatrix, setAclMatrix] = useState<AclRoleEntry[]>(initialAclMatrix);
 
   const addSociety = useCallback((input: Omit<Society, "id">) => {
@@ -101,6 +128,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setEvents((prev) => prev.filter((e) => e.societyId !== id));
     setCollections((prev) => prev.filter((c) => c.societyId !== id));
     setExpenses((prev) => prev.filter((e) => e.societyId !== id));
+    setGuards((prev) => prev.filter((g) => g.societyId !== id));
+    setShifts((prev) => prev.filter((s) => s.societyId !== id));
+    setVisitors((prev) => prev.filter((v) => v.societyId !== id));
   }, []);
 
   const addUser = useCallback((input: Omit<SocietyUser, "id">) => {
@@ -175,6 +205,61 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
+  const addGuard = useCallback((input: Omit<SecurityGuard, "id">) => {
+    const created: SecurityGuard = { ...input, id: generateId("grd") };
+    setGuards((prev) => [...prev, created]);
+    return created;
+  }, []);
+
+  const updateGuard = useCallback((id: string, input: Omit<SecurityGuard, "id">) => {
+    setGuards((prev) => prev.map((g) => (g.id === id ? { ...input, id } : g)));
+  }, []);
+
+  const deleteGuard = useCallback((id: string) => {
+    setGuards((prev) => prev.filter((g) => g.id !== id));
+    // A guard with no roster entry can't be scheduled, so their shifts go too.
+    setShifts((prev) => prev.filter((s) => s.guardId !== id));
+  }, []);
+
+  const addShift = useCallback((input: Omit<SecurityShift, "id">) => {
+    const created: SecurityShift = { ...input, id: generateId("sft") };
+    setShifts((prev) => [...prev, created]);
+    return created;
+  }, []);
+
+  const updateShift = useCallback((id: string, input: Omit<SecurityShift, "id">) => {
+    setShifts((prev) => prev.map((s) => (s.id === id ? { ...input, id } : s)));
+  }, []);
+
+  const deleteShift = useCallback((id: string) => {
+    setShifts((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const addVisitor = useCallback((input: Omit<Visitor, "id">) => {
+    const created: Visitor = { ...input, id: generateId("vis") };
+    setVisitors((prev) => [...prev, created]);
+    return created;
+  }, []);
+
+  const updateVisitor = useCallback((id: string, input: Omit<Visitor, "id">) => {
+    setVisitors((prev) => prev.map((v) => (v.id === id ? { ...input, id } : v)));
+  }, []);
+
+  const deleteVisitor = useCallback((id: string) => {
+    setVisitors((prev) => prev.filter((v) => v.id !== id));
+  }, []);
+
+  const markVisitorOut = useCallback((id: string) => {
+    setVisitors((prev) =>
+      prev.map((v) => {
+        // Already OUT — leave untouched rather than overwrite the recorded
+        // out time (also guards against a stale double-click).
+        if (v.id !== id || v.status === "out") return v;
+        return { ...v, status: "out", outDate: todayISODate(), outTime: nowHHMM() };
+      })
+    );
+  }, []);
+
   const toggleAclPermission = useCallback(
     (role: UserRole, moduleName: AclModule, action: AclAction) => {
       setAclMatrix((prev) =>
@@ -205,6 +290,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       events,
       collections,
       expenses,
+      guards,
+      shifts,
+      visitors,
       addSociety,
       updateSociety,
       deleteSociety,
@@ -223,6 +311,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addExpense,
       updateExpense,
       deleteExpense,
+      addGuard,
+      updateGuard,
+      deleteGuard,
+      addShift,
+      updateShift,
+      deleteShift,
+      addVisitor,
+      updateVisitor,
+      deleteVisitor,
+      markVisitorOut,
       aclMatrix,
       toggleAclPermission,
       resetAcl,
@@ -234,6 +332,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       events,
       collections,
       expenses,
+      guards,
+      shifts,
+      visitors,
       addSociety,
       updateSociety,
       deleteSociety,
@@ -252,6 +353,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addExpense,
       updateExpense,
       deleteExpense,
+      addGuard,
+      updateGuard,
+      deleteGuard,
+      addShift,
+      updateShift,
+      deleteShift,
+      addVisitor,
+      updateVisitor,
+      deleteVisitor,
+      markVisitorOut,
       aclMatrix,
       toggleAclPermission,
       resetAcl,

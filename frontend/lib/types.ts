@@ -105,7 +105,7 @@ export interface EventExpense {
  * "<module>:<action>" permission strings it holds. Swap
  * `data/acl.json` for a live fetch later without touching the UI.
  */
-export type AclAction = "view" | "create" | "edit" | "delete";
+export type AclAction = "view" | "create" | "edit" | "delete" | "mark_in" | "mark_out";
 export type AclModule =
   | "Users"
   | "Notices"
@@ -113,10 +113,92 @@ export type AclModule =
   | "Collections"
   | "Expenses"
   | "Societies"
-  | "ACL";
+  | "ACL"
+  | "Security Guards"
+  | "Security Shifts"
+  | "Visitors";
 
 export interface AclRoleEntry {
   role: UserRole;
   label: string;
   permissions: Partial<Record<AclModule, AclAction[]>>;
+}
+
+/** Which actions are meaningful for each module — drives which action
+ *  columns the ACL grid renders per tab, so a module never shows a
+ *  toggle for an action it doesn't actually support. */
+export const MODULE_ACTIONS: Record<AclModule, AclAction[]> = {
+  Users: ["view", "create", "edit", "delete"],
+  Notices: ["view", "create", "edit", "delete"],
+  Events: ["view", "create", "edit", "delete"],
+  Collections: ["view", "create", "edit", "delete"],
+  Expenses: ["view", "create", "edit", "delete"],
+  Societies: ["view", "create", "edit", "delete"],
+  ACL: ["view", "edit"],
+  "Security Guards": ["view", "create", "edit", "delete"],
+  "Security Shifts": ["view", "create", "edit", "delete"],
+  Visitors: ["view", "create", "edit", "delete", "mark_in", "mark_out"],
+};
+
+export type GuardStatus = "active" | "inactive";
+
+export interface SecurityGuard {
+  id: string;
+  societyId: string;
+  name: string;
+  phone: string;
+  employeeCode: string;
+  address: string;
+  joiningDate: string;
+  status: GuardStatus;
+}
+
+/** 12H / 8H / Half day are common presets; CUSTOM lets a society define
+ *  any start/end time and duration of its own. */
+export type ShiftType = "12H" | "8H" | "HALF_DAY" | "CUSTOM";
+export type ShiftStatus = "scheduled" | "active" | "completed" | "cancelled";
+
+export interface SecurityShift {
+  id: string;
+  societyId: string;
+  shiftName: string;
+  shiftType: ShiftType;
+  startTime: string;
+  endTime: string;
+  durationHours: number;
+  guardId: string;
+  shiftDate: string;
+  status: ShiftStatus;
+  remarks: string;
+}
+
+export type VisitorType =
+  | "Guest"
+  | "Delivery"
+  | "Cab/Taxi"
+  | "Service Provider"
+  | "Domestic Help"
+  | "Vendor"
+  | "Other";
+
+export type VisitorStatus = "in" | "out";
+
+export interface Visitor {
+  id: string;
+  societyId: string;
+  /** The unit/flat the visitor is calling on — matched against SocietyUser.unit. */
+  flatId: string;
+  visitorName: string;
+  phone: string;
+  vehicleNumber: string;
+  visitorType: VisitorType;
+  purpose: string;
+  numberOfPersons: number;
+  inDate: string;
+  inTime: string;
+  outDate: string;
+  outTime: string;
+  status: VisitorStatus;
+  remarks: string;
+  createdBy: string;
 }

@@ -82,5 +82,17 @@
     "unit": "Gate 1",
     "designation": "Security Supervisor",
     "initial": "SK"
+  },
+  {
+    "id": "usr-007",
+    "societyId": "soc-silveroak",
+    "name": "Neha Kapoor",
+    "email": "neha.kapoor@silveroak.test",
+    "phone": "9911667788",
+    "password": "resident123",
+    "role": "resident",
+    "unit": "B-1204",
+    "designation": "General Member",
+    "initial": "NK"
   }
 ]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "grd-001",
+    "societyId": "soc-greenwood",
+    "name": "Ramesh Yadav",
+    "phone": "9822011001",
+    "employeeCode": "GRD-GW-01",
+    "address": "Balewadi, Pune",
+    "joiningDate": "2023-04-01",
+    "status": "active"
+  },
+  {
+    "id": "grd-002",
+    "societyId": "soc-greenwood",
+    "name": "Suresh Pawar",
+    "phone": "9822011002",
+    "employeeCode": "GRD-GW-02",
+    "address": "Aundh, Pune",
+    "joiningDate": "2022-11-15",
+    "status": "active"
+  },
+  {
+    "id": "grd-003",
+    "societyId": "soc-palmmeadows",
+    "name": "Manjunath Gowda",
+    "phone": "9945011001",
+    "employeeCode": "GRD-PM-01",
+    "address": "Whitefield, Bengaluru",
+    "joiningDate": "2024-01-10",
+    "status": "active"
+  },
+  {
+    "id": "grd-004",
+    "societyId": "soc-palmmeadows",
+    "name": "Basavaraj Hulle",
+    "phone": "9945011002",
+    "employeeCode": "GRD-PM-02",
+    "address": "KR Puram, Bengaluru",
+    "joiningDate": "2023-06-20",
+    "status": "inactive"
+  },
+  {
+    "id": "grd-005",
+    "societyId": "soc-silveroak",
+    "name": "Devendra Singh",
+    "phone": "9911011001",
+    "employeeCode": "GRD-SO-01",
+    "address": "Sohna Road, Gurugram",
+    "joiningDate": "2021-09-05",
+    "status": "active"
+  },
+  {
+    "id": "grd-006",
+    "societyId": "soc-silveroak",
+    "name": "Naresh Kumar",
+    "phone": "9911011002",
+    "employeeCode": "GRD-SO-02",
+    "address": "Badshahpur, Gurugram",
+    "joiningDate": "2022-03-12",
+    "status": "active"
+  }
+]

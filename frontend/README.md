@@ -50,7 +50,21 @@ Open http://localhost:3000
 | `/admin/dashboard/events/[id]/edit`  | admin, super-admin  | Edit / delete event               |
 | `/admin/dashboard/events/[id]/collections` | admin, super-admin | **Collections** tab — this event's member payments (+ new/edit) |
 | `/admin/dashboard/events/[id]/expenses`    | admin, super-admin | **Expenses** tab — this event's spend (+ new/edit) |
-| `/admin/dashboard/acl`               | super-admin only    | Static role × module permission matrix |
+| `/admin/dashboard/acl`               | super-admin only    | Access control — tab-per-module permission grid |
+| `/admin/dashboard/security`                | admin, super-admin, security | Security Dashboard — guard/shift/visitor summary |
+| `/admin/dashboard/members`                 | resident             | Read-only, filterable member directory |
+| `/admin/dashboard/security/guards`         | admin, super-admin  | List / search / filter guards |
+| `/admin/dashboard/security/guards/new`     | admin, super-admin  | Add guard |
+| `/admin/dashboard/security/guards/[id]`    | admin, super-admin  | View guard (+ their assigned shifts) |
+| `/admin/dashboard/security/guards/[id]/edit` | admin, super-admin | Edit / delete guard |
+| `/admin/dashboard/security/shifts`         | admin, super-admin  | List / filter shifts (by date, guard, status) |
+| `/admin/dashboard/security/shifts/new`     | admin, super-admin  | Create shift (12H / 8H / Half Day presets, or custom) |
+| `/admin/dashboard/security/shifts/[id]`    | admin, super-admin  | View shift, with the assigned guard shown clearly |
+| `/admin/dashboard/security/shifts/[id]/edit` | admin, super-admin | Edit / delete shift |
+| `/admin/dashboard/security/visitors`       | admin, super-admin, security | Visitor list — quick filters, filters, client-side pagination |
+| `/admin/dashboard/security/visitors/new`   | admin, super-admin, security | Register a visitor (entry flow) |
+| `/admin/dashboard/security/visitors/[id]`  | admin, super-admin, security | Visitor Details — full record + Mark Out |
+| `/admin/dashboard/security/visitors/[id]/edit` | admin, super-admin, security | Edit visitor entry |
 
 **Events** sits in the sidebar as an expandable parent with three children —
 *All Events*, *Collections*, *Expenses* — matching a typical accounting
@@ -58,30 +72,65 @@ workflow: create an event (e.g. a Halloween party), then track who in the
 society has paid what towards it (Collections) against what the event cost
 (Expenses). Opening a single event lands on its **Details** tab by default,
 with **Collections** and **Expenses** as two more tabs scoped to just that
-event.
+event — each tab fetches only its own event's rows, never the full
+cross-event list.
 
-**ACL** is a static role × module × action matrix for now
-(`data/acl.json`, shaped like a future `GET /api/acl` response) — it
-documents intended permissions but doesn't yet gate individual actions;
-the console still gates whole pages by role via `AdminGuard` /
-`RequireRole`. Swap the import in `app/admin/dashboard/acl/page.tsx` for a
-live fetch once a real ACL endpoint exists.
+**Security** is the other expandable sidebar group — *Dashboard*, *Guards*,
+*Shifts*, *Visitors* — for guard roster management, shift scheduling, and
+the visitor in/out desk:
+- **Guards**: add/edit/delete, search by name/code/phone, filter by
+  Active/Inactive, and a View page listing that guard's assigned shifts.
+- **Shifts**: `shift_type` is `12H` / `8H` / `HALF_DAY` / `CUSTOM` with
+  preset start/end time options per type (see `SHIFT_TYPE_PRESETS` in
+  `lib/data.ts`) — duration is computed automatically from the times,
+  including overnight shifts that cross midnight. Filter by date, guard,
+  and status; the assigned guard is always shown, in the list, the View
+  page, and the form.
+- **Visitors**: the entry flow is flat → name → phone → vehicle → type →
+  purpose → persons → save, with in-date/time stamped automatically.
+  **Mark Out** stamps `outDate`/`outTime` and is a no-op if the visitor is
+  already out. The list has quick filters (Currently Inside / Today's
+  Visitors / Completed Visits), full filters (date, flat, type, status,
+  search), and is client-side paginated — the slice in
+  `visitors/page.tsx` is exactly where a real `?page=&pageSize=&...`
+  API call would plug in. Visitor Details is its own route so opening one
+  visitor never pulls in the full list.
+- Security desk (`security` role) users get Dashboard and Visitors
+  (their operational job); Guards/Shifts scheduling stays admin/super-admin
+  only.
 
-A **society admin** only ever sees and manages their own society's users and
-notices. A **super-admin** manages every society, and is the only role that
-can list/add/edit societies themselves. Residents get read-only access to
-the same console shell — Overview, a filterable **Members** directory, and
-view-only **Events** (open one to see its Details, Collections and
-Expenses tabs, with no add/edit/delete controls). Committee members and
-security accounts still land on the plain `/dashboard` (society info +
-noticeboard + directory).
+**ACL** is a tab-per-module permission grid (`data/acl.json`, shaped like a
+future `GET /api/acl` response) — one tab per module (Users, Notices,
+Events, Collections, Expenses, Societies, Security Guards, Security
+Shifts, Visitors, ACL), and only the active tab's table is mounted at a
+time. Each module only renders the action columns it actually supports
+(`MODULE_ACTIONS` in `lib/types.ts`) — ACL itself is view/edit only,
+Visitors adds `mark_in`/`mark_out`. Clicking a cell toggles that
+role/module/action; a role/module pair missing from the data starts fully
+unchecked. It documents intended permissions but doesn't yet gate
+individual actions — the console still gates whole pages by role via
+`AdminGuard` / `RequireRole`. Swap the reads/writes in
+`app/admin/dashboard/acl/page.tsx` for live `GET`/`PUT /api/acl` calls
+once a real backend endpoint exists.
+
+A **society admin** only ever sees and manages their own society's users,
+notices, events, and security data. A **super-admin** manages every
+society, and is the only role that can list/add/edit societies or edit
+ACL. Residents get read-only console access — Overview, a filterable
+**Members** directory, and view-only **Events** (open one to see its
+Details, Collections and Expenses tabs, no add/edit/delete controls).
+Security desk accounts get Overview, the Security Dashboard, and the
+Visitors desk (create/edit/mark out, no guard/shift management, no
+delete). Committee members are the only role still on the plain
+`/dashboard` (society info + noticeboard + directory).
 
 ## Authentication (static, client-side only)
 
 Login asks for **Society**, **Email or Phone**, and **Password**, checked
 against `data/users.json` in the browser. A matched session is kept in
-`sessionStorage`. After login, admins and the super-admin are routed
-straight to `/admin/dashboard`; everyone else goes to `/dashboard`.
+`sessionStorage`. After login, admin, super-admin, resident, and security
+accounts are routed to `/admin/dashboard`; committee accounts go to
+`/dashboard`.
 
 ### Demo logins
 
@@ -94,6 +143,7 @@ straight to `/admin/dashboard`; everyone else goes to `/dashboard`.
 | Palm Meadows CHS                    | vikram.shetty@palmmeadows.test      | resident123    | Resident     |
 | Silver Oak Enclave                  | karan.malhotra@silveroak.test       | admin123       | Society Admin|
 | Silver Oak Enclave                  | simran.kaur@silveroak.test          | security123    | Security     |
+| Silver Oak Enclave                  | neha.kapoor@silveroak.test          | resident123    | Resident     |
 
 > All CRUD (add/edit/delete) happens in memory via React state, seeded from
 > the JSON files. There's no backend, so changes last for the browser
@@ -122,10 +172,19 @@ app/
           layout.tsx        Event header + Details/Collections/Expenses tabs
           page.tsx          Details (default)
           edit/              Edit / delete event
-          collections/       This event's collections — list · new/ · [collectionId]/edit/
-          expenses/          This event's expenses — list · new/ · [expenseId]/edit/
+          collections/       This event's collections — list · new/ · [collectionId] view/edit
+          expenses/          This event's expenses — list · new/ · [expenseId] view/edit
+      security/
+        page.tsx          Security Dashboard — summary cards only
+        guards/           list · new/ · [id] view/edit  (admin/super-admin)
+        shifts/           list · new/ · [id] view/edit  (admin/super-admin)
+        visitors/         list (filters + quick filters + pagination) ·
+                           new/ · [id] view (+ Mark Out) · [id]/edit
+                           (admin/super-admin/security)
+      members/
+        page.tsx          Read-only, filterable member directory (resident)
       acl/
-        page.tsx          Static role × module permission matrix (super-admin only)
+        page.tsx          Tab-per-module permission grid (super-admin only)
   layout.tsx             Root layout: fonts, DataProvider, AuthProvider
   globals.css
 components/
@@ -133,20 +192,25 @@ components/
   ui/                     Button, Card, Input, Select, Textarea, Badge, ...
   home/                   Landing page sections + contact form
   login/                  LoginForm
-  dashboard/              DashboardView (read-only, non-admin roles)
+  dashboard/              DashboardView (read-only, committee role only)
   admin/                  AdminGuard, AdminSidebar, AdminTopbar, PageHeader,
                            StatCard, ConfirmDeleteButton, RequireRole,
-                           forms/ (UserForm, NoticeForm, SocietyForm)
+                           forms/ (UserForm, NoticeForm, SocietyForm,
+                           EventForm, CollectionForm, ExpenseForm,
+                           GuardForm, ShiftForm, VisitorForm)
 context/
   AuthContext.tsx         Static-JSON auth (Context + sessionStorage)
   DataContext.tsx         In-memory "database" seeded from JSON, with
-                           add/update/delete for societies, users, notices
+                           add/update/delete for every entity plus
+                           markVisitorOut and toggleAclPermission
 lib/
-  types.ts                Shared TypeScript types + UserRole
+  types.ts                Shared TypeScript types + UserRole + MODULE_ACTIONS
   data.ts                 Pure helper functions over the live data arrays
 data/
   societies.json  users.json  plans.json  notices.json
-  events.json  collections.json  expenses.json  acl.json
+  events.json  collections.json  expenses.json
+  security-guards.json  security-shifts.json  visitors.json
+  acl.json
 ```
 
 ## Design
