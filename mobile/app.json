@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "SocietyLedger",
+    "slug": "society-ledger-mobile",
+    "scheme": "societyledger",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.societyledger.mobile" },
+    "android": {
+      "package": "com.societyledger.mobile",
+      "adaptiveIcon": { "backgroundColor": "#1C2B39" }
+    },
+    "extra": {
+      "apiBaseUrl": "https://YOUR-BACKEND-HOST/api/v1"
+    }
+  }
+}

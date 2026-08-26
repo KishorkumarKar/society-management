@@ -1,0 +1,67 @@
+/**
+ * Copied 1:1 from backend/src/modules/acl/permissions.constants.ts.
+ * These are display/gating hints only — the backend is still the final
+ * authority on every request (see api/client.ts: a 403 is never swallowed
+ * or retried, it's shown to the user as-is).
+ */
+export const PERMISSIONS = {
+  USERS_VIEW: 'users.view',
+  USERS_CREATE: 'users.create',
+  USERS_UPDATE: 'users.update',
+  USERS_DELETE: 'users.delete',
+  USERS_ASSIGN_ROLE: 'users.assign_role',
+
+  SOCIETIES_VIEW: 'societies.view',
+  SOCIETIES_CREATE: 'societies.create',
+  SOCIETIES_UPDATE: 'societies.update',
+  SOCIETIES_DELETE: 'societies.delete',
+
+  FLATS_VIEW: 'flats.view',
+  FLATS_CREATE: 'flats.create',
+  FLATS_UPDATE: 'flats.update',
+  FLATS_DELETE: 'flats.delete',
+
+  MAINTENANCE_VIEW: 'maintenance.view',
+  MAINTENANCE_CREATE: 'maintenance.create',
+  MAINTENANCE_UPDATE: 'maintenance.update',
+  MAINTENANCE_DELETE: 'maintenance.delete',
+  MAINTENANCE_COLLECT: 'maintenance.collect',
+
+  ROLES_VIEW: 'roles.view',
+  ROLES_CREATE: 'roles.create',
+  ROLES_UPDATE: 'roles.update',
+  ROLES_DELETE: 'roles.delete',
+  ROLES_ASSIGN_PERMISSION: 'roles.assign_permission',
+
+  PERMISSIONS_VIEW: 'permissions.view',
+
+  HALL_BOOKINGS_VIEW: 'hall_bookings.view',
+  HALL_BOOKINGS_CREATE: 'hall_bookings.create',
+  HALL_BOOKINGS_UPDATE: 'hall_bookings.update',
+  HALL_BOOKINGS_DELETE: 'hall_bookings.delete',
+  HALL_BOOKINGS_APPROVE: 'hall_bookings.approve',
+  HALL_BOOKINGS_REJECT: 'hall_bookings.reject',
+  HALL_BOOKINGS_CANCEL: 'hall_bookings.cancel',
+
+  EXPENSES_VIEW: 'expenses.view',
+  EXPENSES_CREATE: 'expenses.create',
+  EXPENSES_UPDATE: 'expenses.update',
+  EXPENSES_DELETE: 'expenses.delete',
+  EXPENSES_APPROVE: 'expenses.approve',
+
+  ANNOUNCEMENTS_VIEW: 'announcements.view',
+  ANNOUNCEMENTS_CREATE: 'announcements.create',
+  ANNOUNCEMENTS_UPDATE: 'announcements.update',
+  ANNOUNCEMENTS_DELETE: 'announcements.delete',
+  ANNOUNCEMENTS_SEND: 'announcements.send',
+
+  NOTIFICATIONS_VIEW: 'notifications.view',
+  NOTIFICATIONS_CREATE: 'notifications.create',
+  NOTIFICATIONS_UPDATE: 'notifications.update',
+  NOTIFICATIONS_DELETE: 'notifications.delete',
+  NOTIFICATIONS_MARK_READ: 'notifications.mark_read',
+  NOTIFICATIONS_SEND: 'notifications.send',
+  NOTIFICATIONS_VIEW_ALL: 'notifications.view_all',
+} as const;
+
+export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
