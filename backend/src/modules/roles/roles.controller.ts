@@ -1,7 +1,7 @@
 import {Router} from 'express';
 import {RolesService} from './roles.service';
 import {createRoleSchema, updateRoleSchema, listRolesQuerySchema, assignPermissionSchema} from './roles.validators';
-import {idParamSchema} from '../societies/societies.validators';
+import {idParamSchema, rolePermissionParamSchema} from '../societies/societies.validators';
 import {validate} from '../../validators/validate.middleware';
 import {authenticate} from '../../middleware/authenticate.middleware';
 import {authorize} from '../../middleware/authorize.middleware';
@@ -20,6 +20,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
   const router = Router();
   router.use(authenticate);
 
+  
+  /**
+   * @openapi
+   * /roles:
+   *   post:
+   *     tags: [Roles]
+   *     summary: Roles add
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: roles add}
+   */
   router.post(
     '/',
     authorize(PERMISSIONS.ROLES_CREATE),
@@ -30,6 +42,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles:
+   *   get:
+   *     tags: [Roles]
+   *     summary: Roles List
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Roles List}
+   */
   router.get(
     '/',
     authorize(PERMISSIONS.ROLES_VIEW),
@@ -42,6 +66,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles/{id}:
+   *   get:
+   *     tags: [Roles]
+   *     summary: Get roles
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Get roles}
+   */
   router.get(
     '/:id',
     authorize(PERMISSIONS.ROLES_VIEW),
@@ -52,6 +88,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles/{id}:
+   *   patch:
+   *     tags: [Roles]
+   *     summary: Roles Update
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Roles Update}
+   *       403: {description: Roles Update}
+   */
   router.patch(
     '/:id',
     authorize(PERMISSIONS.ROLES_UPDATE),
@@ -63,6 +111,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles/{id}:
+   *   delete:
+   *     tags: [Roles]
+   *     summary: Roles Delete
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Roles Delete}
+   *       403: {description: Roles Delete}
+   */
   router.delete(
     '/:id',
     authorize(PERMISSIONS.ROLES_DELETE),
@@ -73,6 +133,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles/{id}/permissions:
+   *   get:
+   *     tags: [Roles]
+   *     summary: Roles permissions get
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Roles permissions get}
+   *       403: {description: Roles permissions get}
+   */
   router.get(
     '/:id/permissions',
     authorize(PERMISSIONS.ROLES_VIEW),
@@ -83,6 +155,18 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /roles/{id}/permissions:
+   *   post:
+   *     tags: [Roles]
+   *     summary: Roles permissions add
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Roles permissions add}
+   *       403: {description: Roles permissions add}
+   */
   router.post(
     '/:id/permissions',
     authorize(PERMISSIONS.ROLES_ASSIGN_PERMISSION),
@@ -94,11 +178,23 @@ export function buildRolesRouter(rolesService: RolesService): Router {
     }),
   );
 
+  /**
+   * @openapi
+   * /roles/{id}/permissions/{permissionId}:
+   *   delete:
+   *     tags: [Roles]
+   *     summary: Roles permissions delete
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Roles permissions delete}
+   *       403: {description: Roles permissions delete}
+   */
   router.delete(
     '/:id/permissions/:permissionId',
     authorize(PERMISSIONS.ROLES_ASSIGN_PERMISSION),
-    validate(idParamSchema, 'params'),
+    validate(rolePermissionParamSchema, 'params'),
     asyncHandler(async (req, res) => {
+    console.log("------",req.params)
       await rolesService.removePermission(req.currentUser!.societyId, Number(req.params.id), Number(req.params.permissionId));
       return ok(res, {removed: true});
     }),

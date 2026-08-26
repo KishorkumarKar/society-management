@@ -7,6 +7,8 @@ export interface CurrentUserContext {
   userId: number;
   societyId: number;
   roleIds: number[];
+  roleType?: string[];
+  isSupperAdmin?: boolean;
 }
 
 declare global {

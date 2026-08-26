@@ -38,3 +38,8 @@ export const listSocietiesQuerySchema = Joi.object({
 export const idParamSchema = Joi.object({
   id: Joi.number().integer().positive().required(),
 });
+
+export const rolePermissionParamSchema = Joi.object({
+  id: Joi.number().integer().positive().required(),
+  permissionId: Joi.number().integer().positive().required(),
+});

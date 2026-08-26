@@ -21,16 +21,47 @@ export function buildUsersRouter(usersService: UsersService): Router {
   const router = Router();
   router.use(authenticate, tenantIsolation);
 
+  
+  /**
+   * @openapi
+   * /users:
+   *   post:
+   *     tags: [Users]
+   *     summary: Create User
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Create User}
+   */
   router.post(
     '/',
     authorize(PERMISSIONS.USERS_CREATE),
-    validate(createUserSchema),
+    (req, res, next) => {
+      const schema = createUserSchema(req.currentUser!.isSupperAdmin === true);
+      validate(schema)(req, res, next);
+    },
     asyncHandler(async (req, res) => {
-      const user = await usersService.create(req.currentUser!.societyId, req.currentUser!.userId, req.body);
+      const user = await usersService.create(
+        req.currentUser!.societyId,
+        req.currentUser!.userId,
+        req.body,
+        req.currentUser!.isSupperAdmin,
+      );
       return ok(res, user.toSafeJSON(), 201);
     }),
   );
 
+  /**
+   * @openapi
+   * /users:
+   *   get:
+   *     tags: [Users]
+   *     summary: List user (paginated, searchable)
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing user.get permission}
+   */
   router.get(
     '/',
     authorize(PERMISSIONS.USERS_VIEW),
@@ -55,6 +86,17 @@ export function buildUsersRouter(usersService: UsersService): Router {
     }),
   );
 
+  /**
+   * @openapi
+   * /users/{id}:
+   *   get:
+   *     tags: [Users]
+   *     summary: Get a user by id
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing user.get permission}
+   */
   router.get(
     '/:id',
     authorize(PERMISSIONS.USERS_VIEW),
@@ -65,17 +107,45 @@ export function buildUsersRouter(usersService: UsersService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /users/{id}:
+   *   patch:
+   *     tags: [Users]
+   *     summary: Update a user
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing user.create permission}
+   */
   router.patch(
     '/:id',
     authorize(PERMISSIONS.USERS_UPDATE),
     validate(idParamSchema, 'params'),
-    validate(updateUserSchema),
+    
+    (req, res, next) => {
+      const schema = updateUserSchema(req.currentUser!.isSupperAdmin === true);
+      validate(schema)(req, res, next);
+    },
     asyncHandler(async (req, res) => {
-      const user = await usersService.update(req.currentUser!.societyId, Number(req.params.id), req.body);
+      const user = await usersService.update(req.currentUser!.societyId, Number(req.params.id), req.body, req.currentUser!.isSupperAdmin);
       return ok(res, user.toSafeJSON());
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /users/{id}:
+   *   delete:
+   *     tags: [Users]
+   *     summary: Delete a user
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing user.delete permission}
+   */
   router.delete(
     '/:id',
     authorize(PERMISSIONS.USERS_DELETE),
@@ -86,6 +156,18 @@ export function buildUsersRouter(usersService: UsersService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /users/{id}/permissions:
+   *   get:
+   *     tags: [Users]
+   *     summary: User permissions
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Get user permissions}
+   */
   router.get(
     '/:id/permissions',
     authorize(PERMISSIONS.USERS_VIEW),
@@ -96,6 +178,18 @@ export function buildUsersRouter(usersService: UsersService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /users/{id}/roles:
+   *   post:
+   *     tags: [Users]
+   *     summary: User roles add
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Get user roles add}
+   */
   router.post(
     '/:id/roles',
     authorize(PERMISSIONS.USERS_ASSIGN_ROLE),
@@ -112,6 +206,18 @@ export function buildUsersRouter(usersService: UsersService): Router {
     }),
   );
 
+  
+  /**
+   * @openapi
+   * /users/{id}/roles/{roleId}:
+   *   delete:
+   *     tags: [Users]
+   *     summary: Delete user roles
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Delete user roles}
+   */
   router.delete(
     '/:id/roles/:roleId',
     authorize(PERMISSIONS.USERS_ASSIGN_ROLE),

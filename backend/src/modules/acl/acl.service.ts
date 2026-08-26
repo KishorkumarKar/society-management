@@ -1,9 +1,10 @@
-import {DataSource} from 'typeorm';
+import {DataSource, In, IsNull} from 'typeorm';
 import {Role} from '../../domain/entities/role.entity';
 import {UserRole} from '../../domain/entities/user-role.entity';
 import {User} from '../../domain/entities/user.entity';
 import {permissionCache} from './permission-cache';
 import {logger} from '../../infrastructure/logging/logger';
+import {config} from '../../config/env.config';
 
 export class ForbiddenRoleAssignmentError extends Error {
   constructor(message: string) {
@@ -77,10 +78,11 @@ export class AclService {
       );
     }
 
-    const existing = await userRoleRepo.findOne({where: {user_id: userId, role_id: roleId}});
-    if (existing) return; // idempotent
+    const existing = await userRoleRepo.findOne({where: {user_id: userId}});
+    // const existing = await userRoleRepo.findOne({where: {user_id: userId,role_id: roleId}});
+    // if (existing) return; // idempotent
 
-    await userRoleRepo.save(userRoleRepo.create({user_id: userId, role_id: roleId}));
+    await userRoleRepo.save(userRoleRepo.create({id:existing?.id,user_id: userId, role_id: roleId}));
     permissionCache.invalidateUser(userId, user.society_id);
 
     logger.info('Role assigned', {actorUserId, userId, roleId, societyId: user.society_id});
@@ -97,6 +99,21 @@ export class AclService {
     permissionCache.invalidateUser(userId, user.society_id);
 
     logger.info('Role removed', {actorUserId, userId, roleId, societyId: user.society_id});
+  }
+
+  async getRoleName(roleIds: number[]): Promise<string[]> {
+    const roleRepo = this.dataSource.getRepository(Role);
+    const roles = await roleRepo.find({where: {id: In(roleIds), society_id: IsNull()}, select: ['name']});
+    const names = roles.map((r) => r.name);
+    return names;
+  }
+
+  isSupperAdmin(roleType: string[]): boolean {
+    if (roleType.includes(config.supperAdminCode)) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /** Call after any role_permissions mutation — cheap and correct beats clever. */

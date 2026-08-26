@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-export const createUserSchema = Joi.object({
+export const createUserSchema = (isSuperAdmin: boolean) =>Joi.object({
   name: Joi.string().trim().max(150).required(),
   email: Joi.string().email().optional(),
   phone: Joi.string()
@@ -8,17 +8,25 @@ export const createUserSchema = Joi.object({
     .optional(),
   password: Joi.string().min(8).max(72).required(),
   flatId: Joi.number().integer().positive().allow(null).optional(),
+   // Allowed only for super admin
+  vendorSocietyId: isSuperAdmin
+    ? Joi.number().integer().positive().allow(null).optional()
+    : Joi.forbidden(),
   roleIds: Joi.array().items(Joi.number().integer().positive()).optional().default([]),
 })
   .or('email', 'phone')
   .messages({'object.missing': 'Either email or phone is required'});
 
-export const updateUserSchema = Joi.object({
+export const updateUserSchema = (isSuperAdmin: boolean) => Joi.object({
   name: Joi.string().trim().max(150).optional(),
   email: Joi.string().email().optional(),
   phone: Joi.string()
     .pattern(/^[0-9+\-\s]{7,20}$/)
     .optional(),
+   // Allowed only for super admin
+  vendorSocietyId: isSuperAdmin
+    ? Joi.number().integer().positive().allow(null).optional()
+    : Joi.forbidden(),
   flatId: Joi.number().integer().positive().allow(null).optional(),
   isActive: Joi.boolean().optional(),
 }).min(1);

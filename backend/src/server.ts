@@ -16,6 +16,7 @@ async function bootstrap(): Promise<void> {
   const app = createApp(dataSource);
 
   const server = app.listen(config.port, config.host, () => {
+    console.log(`Society Management API listening on http://${config.host}:${config.port}${config.apiPrefix}`)
     logger.info(`Society Management API listening on http://${config.host}:${config.port}${config.apiPrefix}`, {
       env: config.env,
     });

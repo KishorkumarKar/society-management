@@ -14,6 +14,7 @@ export interface CreateUserInput {
   phone?: string;
   password: string;
   flatId?: number | null;
+  vendorSocietyId?: number | null;
   roleIds?: number[];
 }
 
@@ -22,6 +23,7 @@ export interface UpdateUserInput {
   email?: string;
   phone?: string;
   flatId?: number | null;
+  vendorSocietyId?: number | null;
   isActive?: boolean;
 }
 
@@ -50,8 +52,20 @@ export class UsersService {
    * All of this runs inside a single DB transaction: if role assignment
    * fails, the user creation itself is rolled back.
    */
-  async create(societyId: number, actorUserId: number, input: CreateUserInput): Promise<User> {
+  async create(
+    societyId: number,
+    actorUserId: number,
+    input: CreateUserInput,
+    isSupperAdmin: boolean = false,
+  ): Promise<User> {
     return this.dataSource.transaction(async (manager) => {
+      if (isSupperAdmin === true) {
+        if (typeof input.vendorSocietyId === 'number' && input.vendorSocietyId > 0) {
+          societyId = input.vendorSocietyId;
+        } else {
+          throw ApiError.forbidden('Is not a valid society', 'SOCIETY_INACTIVE');
+        }
+      }
       const societyRepo = manager.getRepository(Society);
       const society = await societyRepo.findOne({where: {id: societyId}});
       if (!society) throw ApiError.notFound('Society not found');
@@ -179,7 +193,14 @@ export class UsersService {
     return {data, total};
   }
 
-  async update(societyId: number, id: number, input: UpdateUserInput): Promise<User> {
+  async update(societyId: number, id: number, input: UpdateUserInput, isSupperAdmin: boolean = false): Promise<User> {
+    if (isSupperAdmin === true) {
+      if (typeof input.vendorSocietyId === 'number' && input.vendorSocietyId > 0) {
+        societyId = input.vendorSocietyId;
+      } else {
+        throw ApiError.forbidden('Is not a valid society', 'SOCIETY_INACTIVE');
+      }
+    }
     const user = await this.findById(societyId, id);
     const repo = this.dataSource.getRepository(User);
 

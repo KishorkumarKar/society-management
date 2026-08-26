@@ -47,6 +47,9 @@ export function buildSocietiesRouter(societiesService: SocietiesService): Router
    *     tags: [Societies]
    *     summary: List societies (paginated, searchable)
    *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing societies.create permission}
    */
   router.get(
     '/',
@@ -67,6 +70,9 @@ export function buildSocietiesRouter(societiesService: SocietiesService): Router
    *     tags: [Societies]
    *     summary: Get a society by id
    *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Created}
+   *       403: {description: Missing societies.create permission}
    */
   router.get(
     '/:id',

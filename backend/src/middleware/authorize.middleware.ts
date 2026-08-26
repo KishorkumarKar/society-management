@@ -16,16 +16,24 @@ export function authorize(...requiredPermissions: string[]) {
       return next(ApiError.unauthorized());
     }
 
-    const aclService: AclService = req.app.locals.aclService;
-    const hasAll = await Promise.all(
-      requiredPermissions.map((p) => aclService.hasPermission(req.currentUser!.userId, req.currentUser!.societyId, p)),
-    );
+    try {
+      const aclService: AclService = req.app.locals.aclService;
+      const hasAll = await Promise.all(
+        requiredPermissions.map((p) =>
+          aclService.hasPermission(req.currentUser!.userId, req.currentUser!.societyId, p),
+        ),
+      );
 
-    if (hasAll.some((allowed) => !allowed)) {
-      return next(ApiError.forbidden());
+      if (hasAll.some((allowed) => !allowed)) {
+        return next(ApiError.forbidden());
+      }
+      let roleType = await aclService.getRoleName(req.currentUser!.roleIds);
+      req.currentUser.roleType = roleType;
+      req.currentUser.isSupperAdmin = aclService.isSupperAdmin(roleType);
+      next();
+    } catch (err) {
+      next(err);
     }
-
-    next();
   };
 }
 

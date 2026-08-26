@@ -19,6 +19,18 @@ export function buildPermissionsRouter(permissionsService: PermissionsService): 
   const router = Router();
   router.use(authenticate);
 
+  
+  /**
+   * @openapi
+   * /permissions:
+   *   get:
+   *     tags: [Permissions]
+   *     summary: Permissions get
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Permissions get}
+   *       403: {description: Permissions get}
+   */
   router.get(
     '/',
     authorize(PERMISSIONS.PERMISSIONS_VIEW),
@@ -36,6 +48,18 @@ export function buildPermissionsRouter(permissionsService: PermissionsService): 
   // in practice this is a rare, administrative action performed by whoever
   // can already shape roles. Reuses ROLES_CREATE as the closest existing
   // "I am allowed to extend the ACL surface" signal.
+  
+  /**
+   * @openapi
+   * /permissions:
+   *   post:
+   *     tags: [Permissions]
+   *     summary: Permissions add
+   *     security: [{bearerAuth: []}]
+   *     responses:
+   *       201: {description: Permissions add}
+   *       403: {description: Permissions add}
+   */
   router.post(
     '/',
     authorize(PERMISSIONS.ROLES_CREATE),

@@ -62,6 +62,7 @@ export const config = {
   host: env.HOST as string,
   apiPrefix: env.API_PREFIX as string,
   corsOrigins: (env.CORS_ORIGIN as string).split(',').map((s: string) => s.trim()),
+  supperAdminCode:"Super Admin",
 
   db: {
     host: env.DB_HOST as string,
