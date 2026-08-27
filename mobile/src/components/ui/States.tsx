@@ -13,12 +13,17 @@ export function LoadingState() {
   );
 }
 
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+export function ErrorState({ message, onRetry, requestId }: { message: string; onRetry?: () => void; requestId?: string }) {
   const { theme } = useAppTheme();
   return (
     <View style={styles.center}>
       <Text style={[styles.title, { color: theme.text }]}>Something went wrong</Text>
       <Text style={[styles.body, { color: theme.textMuted }]}>{message}</Text>
+      {requestId && (
+        <Text style={[styles.body, { color: theme.textMuted, fontFamily: fontFamilies.mono, fontSize: 10 }]}>
+          Reference: {requestId}
+        </Text>
+      )}
       {onRetry && <View style={{ marginTop: 16, width: 140 }}><Button label="Try again" onPress={onRetry} variant="secondary" /></View>}
     </View>
   );

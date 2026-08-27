@@ -13,7 +13,7 @@
       "adaptiveIcon": { "backgroundColor": "#1C2B39" }
     },
     "extra": {
-      "apiBaseUrl": "https://YOUR-BACKEND-HOST/api/v1"
+      "apiBaseUrl": "http://192.168.29.179:4000/api/v1/"
     }
   }
 }

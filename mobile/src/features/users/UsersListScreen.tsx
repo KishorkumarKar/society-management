@@ -6,6 +6,9 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { EntityListScreen } from '../../components/ui/EntityListScreen';
+import { FAB } from '../../components/ui/FAB';
+import { PermissionGate } from '../../acl/PermissionGate';
+import { PERMISSIONS } from '../../acl/permissions';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
 import { listUsers } from '../../api/endpoints/users';
@@ -44,12 +47,15 @@ export function UsersListScreen() {
                   <Text style={[styles.name, { color: theme.text }]}>{u.name}</Text>
                   <Text style={[styles.contact, { color: theme.textMuted }]}>{u.email ?? u.phone}</Text>
                 </View>
-                <StatusPill status={u.is_active ? 'active' : 'inactive'} />
+                <StatusPill status={u.isActive ? 'active' : 'inactive'} />
               </View>
             </Card>
           </Pressable>
         )}
       />
+      <PermissionGate permission={PERMISSIONS.USERS_CREATE}>
+        <FAB onPress={() => navigation.navigate('UserCreate')} />
+      </PermissionGate>
     </Screen>
   );
 }

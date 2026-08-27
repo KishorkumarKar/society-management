@@ -1,7 +1,8 @@
 import { apiClient } from '../client';
 import { ApiPaginated, ApiSuccess, SafeUser, Permission } from '../types';
 
-// Matches backend/src/modules/users/users.controller.ts route table:
+// Matches backend/src/modules/users/users.controller.ts route table and
+// users.validators.ts exactly:
 //   POST   /users                (users.create)
 //   GET    /users                (users.view)
 //   GET    /users/:id            (users.view)
@@ -10,6 +11,10 @@ import { ApiPaginated, ApiSuccess, SafeUser, Permission } from '../types';
 //   GET    /users/:id/permissions(users.view)
 //   POST   /users/:id/roles      (users.assign_role)
 //   DELETE /users/:id/roles/:roleId (users.assign_role)
+//
+// Request bodies are camelCase (isActive, flatId, roleIds) — same casing as
+// the response, since User is the one entity with a safe-serializer
+// (toSafeJSON()) that returns camelCase. See api/types.ts's header comment.
 
 export interface ListUsersParams {
   page?: number;
@@ -32,6 +37,8 @@ export interface CreateUserPayload {
   email?: string;
   phone?: string;
   password: string;
+  flatId?: number | null;
+  roleIds?: number[];
 }
 
 export async function createUser(payload: CreateUserPayload) {
@@ -39,7 +46,15 @@ export async function createUser(payload: CreateUserPayload) {
   return res.data.data;
 }
 
-export async function updateUser(id: number, payload: Partial<CreateUserPayload> & { is_active?: boolean }) {
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  phone?: string;
+  flatId?: number | null;
+  isActive?: boolean;
+}
+
+export async function updateUser(id: number, payload: UpdateUserPayload) {
   const res = await apiClient.patch<ApiSuccess<SafeUser>>(`/users/${id}`, payload);
   return res.data.data;
 }

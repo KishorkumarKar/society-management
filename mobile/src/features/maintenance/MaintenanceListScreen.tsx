@@ -6,24 +6,30 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { EntityListScreen } from '../../components/ui/EntityListScreen';
+import { FAB } from '../../components/ui/FAB';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
+import { PermissionGate } from '../../acl/PermissionGate';
+import { PERMISSIONS } from '../../acl/permissions';
 import { listMaintenanceBills } from '../../api/endpoints/maintenance';
-import { MaintenanceBill } from '../../api/types';
+import { MaintenanceBill, MaintenanceBillStatus } from '../../api/types';
 import { AppStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<AppStackParamList>;
-const FILTERS: { label: string; value: MaintenanceBill['status'] | undefined }[] = [
+const FILTERS: { label: string; value: MaintenanceBillStatus | undefined }[] = [
   { label: 'All', value: undefined },
-  { label: 'Pending', value: 'pending' },
+  { label: 'Due', value: 'due' },
   { label: 'Overdue', value: 'overdue' },
   { label: 'Paid', value: 'paid' },
+  { label: 'Approved', value: 'approved' },
 ];
+
+const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export function MaintenanceListScreen() {
   const navigation = useNavigation<Nav>();
   const { theme } = useAppTheme();
-  const [status, setStatus] = useState<MaintenanceBill['status'] | undefined>(undefined);
+  const [status, setStatus] = useState<MaintenanceBillStatus | undefined>(undefined);
 
   return (
     <Screen>
@@ -53,9 +59,11 @@ export function MaintenanceListScreen() {
             <Card>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.period, { color: theme.text }]}>{bill.period}</Text>
+                  <Text style={[styles.period, { color: theme.text }]}>
+                    {MONTHS[bill.billing_month]} {bill.billing_year}
+                  </Text>
                   <Text style={[styles.amount, { color: theme.textMuted }]}>
-                    ₹{bill.amount_paid.toLocaleString()} of ₹{bill.amount.toLocaleString()} collected
+                    ₹{bill.totalPaid.toLocaleString()} of ₹{Number(bill.amount).toLocaleString()} collected
                   </Text>
                 </View>
                 <StatusPill status={bill.status} />
@@ -64,6 +72,9 @@ export function MaintenanceListScreen() {
           </Pressable>
         )}
       />
+      <PermissionGate permission={PERMISSIONS.MAINTENANCE_CREATE}>
+        <FAB onPress={() => navigation.navigate('MaintenanceCreate')} />
+      </PermissionGate>
     </Screen>
   );
 }

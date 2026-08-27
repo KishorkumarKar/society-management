@@ -62,7 +62,8 @@ export function EntityListScreen<T>({
 
   if (query.isError && items.length === 0) {
     const message = query.error instanceof ApiRequestError ? query.error.message : 'Could not load this list.';
-    return <ErrorState message={message} onRetry={() => query.refetch()} />;
+    const requestId = query.error instanceof ApiRequestError ? query.error.requestId : undefined;
+    return <ErrorState message={message} onRetry={() => query.refetch()} requestId={requestId} />;
   }
 
   if (items.length === 0) return <EmptyState title={emptyTitle} subtitle={emptySubtitle} />;

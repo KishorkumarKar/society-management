@@ -66,6 +66,10 @@ export function MoreScreen() {
         <Row icon="document-text-outline" label="Terms & Conditions" onPress={() => navigation.navigate('Terms')} />
 
         <View style={{ height: 20 }} />
+        <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Developer</Text>
+        <Row icon="bug-outline" label="Log Viewer" onPress={() => navigation.navigate('LogViewer')} />
+
+        <View style={{ height: 20 }} />
         <Text style={[styles.sectionLabel, { color: theme.textMuted }]}>Account</Text>
         <Row icon="person-outline" label={user?.name ?? 'Profile'} onPress={() => navigation.navigate('Profile')} />
         <Row icon="log-out-outline" label="Sign out" onPress={confirmLogout} destructive />

@@ -1,21 +1,32 @@
-import React from 'react';
+import React, { useLayoutEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { EntityListScreen } from '../../components/ui/EntityListScreen';
+import { HeaderAddButton } from '../../components/ui/HeaderAddButton';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
+import { useHasPermission } from '../../acl/PermissionGate';
+import { PERMISSIONS } from '../../acl/permissions';
 import { listRoles } from '../../api/endpoints/roles';
 import { Role } from '../../api/types';
 import { AppStackParamList } from '../../navigation/types';
 
-type Nav = NativeStackNavigationProp<AppStackParamList>;
+type Nav = NativeStackNavigationProp<AppStackParamList, 'Roles'>;
 
 export function RolesListScreen() {
   const navigation = useNavigation<Nav>();
   const { theme } = useAppTheme();
+  const canCreate = useHasPermission(PERMISSIONS.ROLES_CREATE);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: canCreate ? () => <HeaderAddButton onPress={() => navigation.navigate('RoleCreate')} /> : undefined,
+    });
+  }, [navigation, canCreate]);
+
   return (
     <Screen>
       <EntityListScreen<Role>

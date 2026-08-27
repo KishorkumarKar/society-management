@@ -6,6 +6,7 @@ import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusPill } from '../../components/ui/StatusPill';
+import { describeQueryError } from '../../lib/describeQueryError';
 import { LoadingState, ErrorState } from '../../components/ui/States';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
@@ -40,7 +41,10 @@ export function HallBookingDetailScreen() {
   });
 
   if (query.isLoading) return <LoadingState />;
-  if (query.isError || !query.data) return <ErrorState message="Could not load this booking." onRetry={() => query.refetch()} />;
+  if (query.isError || !query.data) {
+    const { message, requestId } = describeQueryError(query.error, 'Could not load this booking.');
+    return <ErrorState message={message} onRetry={() => query.refetch()} requestId={requestId} />;
+  }
 
   const b = query.data;
   const isPending = b.status === 'pending';

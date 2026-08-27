@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
-import { StatusPill } from '../../components/ui/StatusPill';
 import { EntityListScreen } from '../../components/ui/EntityListScreen';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
@@ -30,7 +29,6 @@ export function SocietiesListScreen() {
                 <Text style={[styles.name, { color: theme.text }]}>{s.name}</Text>
                 <Text style={[styles.meta, { color: theme.textMuted }]}>{s.slug}</Text>
               </View>
-              <StatusPill status={s.status} />
             </View>
           </Card>
         )}

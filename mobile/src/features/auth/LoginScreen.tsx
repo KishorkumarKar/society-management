@@ -4,12 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../components/ui/Screen';
 import { Button } from '../../components/ui/Button';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
 import { useAuthStore } from '../../store/authStore';
 import { ApiRequestError } from '../../api/types';
+import { PublicStackParamList } from '../../navigation/types';
 
 // Login is society slug + (email OR phone) + password — matches
 // backend/src/modules/auth/auth.validators.ts / auth.service.ts exactly.
@@ -31,12 +33,15 @@ const schema = z
 
 type FormValues = { society: string; identifier: string; password: string };
 
+type Nav = NativeStackNavigationProp<PublicStackParamList, 'Login'>;
+
 export function LoginScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const { theme } = useAppTheme();
   const login = useAuthStore((s) => s.login);
   const isSubmitting = useAuthStore((s) => s.isSubmitting);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formErrorRequestId, setFormErrorRequestId] = useState<string | undefined>(undefined);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -45,6 +50,7 @@ export function LoginScreen() {
 
   const onSubmit = async (values: any) => {
     setFormError(null);
+    setFormErrorRequestId(undefined);
     try {
       await login(values);
       // No manual navigation on success: RootNavigator watches auth
@@ -52,6 +58,7 @@ export function LoginScreen() {
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setFormError(err.message);
+        setFormErrorRequestId(err.requestId);
       } else {
         setFormError('Unable to sign in. Check your connection and try again.');
       }
@@ -100,12 +107,23 @@ export function LoginScreen() {
           {formError && (
             <View style={[styles.errorBox, { borderColor: theme.danger }]}>
               <Text style={{ color: theme.danger, fontFamily: fontFamilies.sans, fontSize: 13 }}>{formError}</Text>
+              {formErrorRequestId && (
+                <Text style={{ color: theme.danger, fontFamily: fontFamilies.mono, fontSize: 10, marginTop: 6, opacity: 0.8 }}>
+                  Reference: {formErrorRequestId}
+                </Text>
+              )}
             </View>
           )}
 
           <View style={{ marginTop: 12 }}>
             <Button label="Sign in" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
           </View>
+
+          <Pressable onPress={() => navigation.navigate('LogViewer')} style={{ alignSelf: 'center', marginTop: 24 }}>
+            <Text style={{ color: theme.textMuted, fontFamily: fontFamilies.sans, fontSize: 12 }}>
+              Trouble signing in? View diagnostic log
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

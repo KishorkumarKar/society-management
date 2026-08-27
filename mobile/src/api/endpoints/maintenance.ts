@@ -1,20 +1,20 @@
 import { apiClient } from '../client';
-import { ApiPaginated, ApiSuccess, MaintenanceBill, MaintenancePayment } from '../types';
+import { ApiPaginated, ApiSuccess, MaintenanceBill, MaintenanceBillStatus, MaintenancePayment, PaymentMethod } from '../types';
 
-// backend/src/modules/maintenance/maintenance.controller.ts:
-//   POST   /maintenance-bills                 (maintenance.create)
-//   GET    /maintenance-bills                 (maintenance.view)
-//   GET    /maintenance-bills/:id              (maintenance.view)
-//   PATCH  /maintenance-bills/:id              (maintenance.update)
-//   DELETE /maintenance-bills/:id              (maintenance.delete)
-//   POST   /maintenance-bills/:id/payments     (maintenance.collect)
-//   GET    /maintenance-bills/:id/payments     (maintenance.view)
+// backend/src/modules/maintenance/maintenance.controller.ts +
+// maintenance.service.ts (CreateBillInput/UpdateBillInput/CreatePaymentInput).
+// Request bodies are camelCase; GET responses merge the raw MaintenanceBill
+// entity with computed totalPaid/outstanding (see MaintenanceBill's comment
+// in api/types.ts) — that merge is real backend behavior, not a client-side
+// convenience. permissions: maintenance.view / .create / .update / .delete / .collect
 
 export interface ListMaintenanceParams {
   page?: number;
   limit?: number;
-  status?: MaintenanceBill['status'];
+  status?: MaintenanceBillStatus;
   flatId?: number;
+  billingYear?: number;
+  billingMonth?: number;
 }
 
 export async function listMaintenanceBills(params: ListMaintenanceParams = {}) {
@@ -28,10 +28,12 @@ export async function getMaintenanceBill(id: number) {
 }
 
 export interface CreateMaintenanceBillPayload {
-  flat_id: number;
-  period: string;
+  flatId: number;
+  billingYear: number;
+  billingMonth: number; // 1-12
   amount: number;
-  due_date: string;
+  dueDate: string; // ISO date
+  penalty?: number;
 }
 
 export async function createMaintenanceBill(payload: CreateMaintenanceBillPayload) {
@@ -39,7 +41,14 @@ export async function createMaintenanceBill(payload: CreateMaintenanceBillPayloa
   return res.data.data;
 }
 
-export async function updateMaintenanceBill(id: number, payload: Partial<CreateMaintenanceBillPayload>) {
+export interface UpdateMaintenanceBillPayload {
+  amount?: number;
+  dueDate?: string;
+  status?: MaintenanceBillStatus;
+  penalty?: number;
+}
+
+export async function updateMaintenanceBill(id: number, payload: UpdateMaintenanceBillPayload) {
   const res = await apiClient.patch<ApiSuccess<MaintenanceBill>>(`/maintenance-bills/${id}`, payload);
   return res.data.data;
 }
@@ -53,7 +62,14 @@ export async function listPayments(billId: number) {
   return res.data.data;
 }
 
-export async function recordPayment(billId: number, payload: { amount: number; method?: string }) {
+export interface RecordPaymentPayload {
+  amount: number;
+  paymentDate: string; // ISO date
+  paymentMethod: PaymentMethod;
+  transactionId?: string | null;
+}
+
+export async function recordPayment(billId: number, payload: RecordPaymentPayload) {
   const res = await apiClient.post<ApiSuccess<MaintenancePayment>>(`/maintenance-bills/${billId}/payments`, payload);
   return res.data.data;
 }

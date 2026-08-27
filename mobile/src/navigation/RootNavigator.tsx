@@ -1,10 +1,19 @@
-import React, { useEffect } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { NavigationContainer, DefaultTheme, DarkTheme, NavigationState } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { useAppTheme } from '../theme/ThemeContext';
+import { logger } from '../lib/logger';
 import { PublicStack } from './PublicStack';
 import { AppStack } from './AppStack';
+
+/** Walks a nav state to the name of the currently focused leaf route. */
+function getActiveRouteName(state: NavigationState | undefined): string | undefined {
+  if (!state) return undefined;
+  const route = state.routes[state.index];
+  if (route.state) return getActiveRouteName(route.state as NavigationState);
+  return route.name;
+}
 
 /**
  * `status` starts 'unknown' (still checking secure storage), then resolves
@@ -18,10 +27,16 @@ export function RootNavigator() {
   const status = useAuthStore((s) => s.status);
   const restoreSession = useAuthStore((s) => s.restoreSession);
   const { theme } = useAppTheme();
+  const previousRouteName = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    logger.info('app', 'App launched');
     restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => {
+    logger.info('auth', `Auth status changed: ${status}`);
+  }, [status]);
 
   if (status === 'unknown') {
     return (
@@ -36,7 +51,16 @@ export function RootNavigator() {
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: theme.background, card: theme.surface, text: theme.text, border: theme.border, primary: theme.primary } };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer
+      theme={navTheme}
+      onStateChange={(state) => {
+        const routeName = getActiveRouteName(state);
+        if (routeName && routeName !== previousRouteName.current) {
+          logger.debug('nav', `Screen: ${routeName}`);
+          previousRouteName.current = routeName;
+        }
+      }}
+    >
       {status === 'signedIn' ? <AppStack /> : <PublicStack />}
     </NavigationContainer>
   );

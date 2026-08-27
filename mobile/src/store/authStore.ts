@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import { login as loginRequest, logout as logoutRequest, LoginPayload } from '../api/endpoints/auth';
 import { registerSessionExpiredHandler } from '../api/client';
 import { secureStorage } from '../lib/secureStorage';
-import { Society, SafeUser } from '../api/types';
+import { logger } from '../lib/logger';
+import { ApiRequestError, Society, SafeUser } from '../api/types';
 
 // User + society + roles are cached (not secret) so the app can restore the
 // shell instantly on cold start while the access token is separately
@@ -43,12 +44,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isSubmitting: false,
 
   restoreSession: async () => {
+    logger.debug('auth', 'Restoring session from secure storage');
     const [accessToken, cacheRaw] = await Promise.all([
       secureStorage.getAccessToken(),
       SecureStore.getItemAsync(SESSION_CACHE_KEY),
     ]);
 
     if (!accessToken || !cacheRaw) {
+      logger.info('auth', 'No stored session — starting signed out');
       set({ status: 'signedOut' });
       return;
     }
@@ -59,6 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // will 401 -> refresh -> succeed or force sign-out via the
       // session-expired handler registered below. This just restores the
       // UI instantly instead of blocking on a network round trip.
+      logger.info('auth', 'Session restored from cache', { userId: cache.user.id, societyId: cache.society.id });
       set({
         status: 'signedIn',
         user: cache.user,
@@ -66,12 +70,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         permissions: cache.permissions,
         roles: cache.roles,
       });
-    } catch {
+    } catch (err) {
+      logger.error('auth', 'Session cache was corrupt — starting signed out', { error: String(err) });
       set({ status: 'signedOut' });
     }
   },
 
   login: async (payload) => {
+    logger.info('auth', 'Login attempt', { society: payload.society, email: payload.email, phone: payload.phone });
     set({ isSubmitting: true, error: null });
     try {
       const result = await loginRequest(payload);
@@ -83,6 +89,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         roles: result.roles,
       };
       await SecureStore.setItemAsync(SESSION_CACHE_KEY, JSON.stringify(cache));
+      logger.info('auth', 'Login succeeded', {
+        userId: result.user.id,
+        societyId: result.society.id,
+        roles: result.roles,
+        permissionCount: result.permissions.length,
+      });
       set({
         status: 'signedIn',
         user: result.user,
@@ -91,18 +103,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         roles: result.roles,
         isSubmitting: false,
       });
-    } catch (err: any) {
-      set({ isSubmitting: false, error: err?.message ?? 'Unable to sign in' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unable to sign in';
+      const requestId = err instanceof ApiRequestError ? err.requestId : undefined;
+      logger.warn('auth', 'Login failed', { message, code: err instanceof ApiRequestError ? err.code : undefined }, requestId);
+      set({ isSubmitting: false, error: message });
       throw err;
     }
   },
 
   logout: async () => {
+    const wasSignedIn = get().status === 'signedIn';
+    logger.info('auth', wasSignedIn ? 'Logging out' : 'Clearing session (forced)');
     const refreshToken = await secureStorage.getRefreshToken();
     try {
       if (refreshToken) await logoutRequest(refreshToken);
-    } catch {
+    } catch (err) {
       // Server-side revoke is best-effort; local state is cleared regardless.
+      logger.warn('auth', 'Server-side logout call failed (clearing local session anyway)', { error: String(err) });
     }
     await Promise.all([secureStorage.clear(), SecureStore.deleteItemAsync(SESSION_CACHE_KEY)]);
     set({ status: 'signedOut', user: null, society: null, permissions: [], roles: [] });
@@ -112,5 +130,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 // Wired once at module load: if the API client exhausts refresh, force the
 // store (and therefore the navigator) back to the signed-out state.
 registerSessionExpiredHandler(() => {
+  logger.warn('auth', 'Session-expired handler fired — signing out');
   useAuthStore.getState().logout();
 });

@@ -4,6 +4,7 @@ export type PublicStackParamList = {
   About: undefined;
   Contact: undefined;
   Terms: undefined;
+  LogViewer: undefined;
 };
 
 export type AppTabParamList = {
@@ -17,19 +18,43 @@ export type AppTabParamList = {
 
 export type AppStackParamList = {
   Tabs: undefined;
+
   UserDetail: { id: number };
+  UserCreate: undefined;
+  UserEdit: { id: number };
+
   MaintenanceDetail: { id: number };
+  MaintenanceCreate: undefined;
+  MaintenanceEdit: { id: number };
+
   AnnouncementDetail: { id: number };
+  AnnouncementCreate: undefined;
+  AnnouncementEdit: { id: number };
+
   HallBookingDetail: { id: number };
+
   Roles: undefined;
   RoleDetail: { id: number };
+  RoleCreate: undefined;
+  RoleEdit: { id: number };
+
   Permissions: undefined;
   Societies: undefined;
+
   Flats: undefined;
+  FlatDetail: { id: number };
+  FlatCreate: undefined;
+  FlatEdit: { id: number };
+
   Expenses: undefined;
+  ExpenseDetail: { id: number };
+  ExpenseCreate: undefined;
+  ExpenseEdit: { id: number };
+
   Notifications: undefined;
   Profile: undefined;
   About: undefined;
   Contact: undefined;
   Terms: undefined;
+  LogViewer: undefined;
 };

@@ -1,11 +1,13 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusPill } from '../../components/ui/StatusPill';
+import { describeQueryError } from '../../lib/describeQueryError';
 import { LoadingState, ErrorState } from '../../components/ui/States';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
@@ -16,10 +18,11 @@ import { AppStackParamList } from '../../navigation/types';
 import { ApiRequestError } from '../../api/types';
 
 type Route = RouteProp<AppStackParamList, 'UserDetail'>;
+type Nav = NativeStackNavigationProp<AppStackParamList, 'UserDetail'>;
 
 export function UserDetailScreen() {
   const { params } = useRoute<Route>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const { theme } = useAppTheme();
   const queryClient = useQueryClient();
 
@@ -31,7 +34,7 @@ export function UserDetailScreen() {
   });
 
   const toggleActive = useMutation({
-    mutationFn: () => updateUser(params.id, { is_active: !userQuery.data!.is_active }),
+    mutationFn: () => updateUser(params.id, { isActive: !userQuery.data!.isActive }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user', params.id] }),
   });
 
@@ -49,7 +52,8 @@ export function UserDetailScreen() {
 
   if (userQuery.isLoading) return <LoadingState />;
   if (userQuery.isError || !userQuery.data) {
-    return <ErrorState message="Could not load this resident." onRetry={() => userQuery.refetch()} />;
+    const { message, requestId } = describeQueryError(userQuery.error, 'Could not load this resident.');
+    return <ErrorState message={message} onRetry={() => userQuery.refetch()} requestId={requestId} />;
   }
 
   const user = userQuery.data;
@@ -64,7 +68,7 @@ export function UserDetailScreen() {
               <Text style={[styles.contact, { color: theme.textMuted }]}>{user.email ?? '—'}</Text>
               <Text style={[styles.contact, { color: theme.textMuted }]}>{user.phone ?? '—'}</Text>
             </View>
-            <StatusPill status={user.is_active ? 'active' : 'inactive'} />
+            <StatusPill status={user.isActive ? 'active' : 'inactive'} />
           </View>
         </Card>
 
@@ -87,7 +91,15 @@ export function UserDetailScreen() {
 
         <PermissionGate permission={PERMISSIONS.USERS_UPDATE}>
           <Button
-            label={user.is_active ? 'Deactivate account' : 'Reactivate account'}
+            label="Edit details"
+            variant="secondary"
+            onPress={() => navigation.navigate('UserEdit', { id: params.id })}
+          />
+        </PermissionGate>
+
+        <PermissionGate permission={PERMISSIONS.USERS_UPDATE}>
+          <Button
+            label={user.isActive ? 'Deactivate account' : 'Reactivate account'}
             variant="secondary"
             loading={toggleActive.isPending}
             onPress={() => toggleActive.mutate()}

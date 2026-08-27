@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Screen } from '../../components/ui/Screen';
 import { Card } from '../../components/ui/Card';
 import { LoadingState, ErrorState } from '../../components/ui/States';
+import { describeQueryError } from '../../lib/describeQueryError';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { fontFamilies } from '../../theme/typography';
 import { listPermissions } from '../../api/endpoints/permissions';
@@ -16,7 +17,10 @@ export function PermissionsListScreen() {
   const query = useQuery({ queryKey: ['permissions'], queryFn: listPermissions });
 
   if (query.isLoading) return <LoadingState />;
-  if (query.isError || !query.data) return <ErrorState message="Could not load permissions." onRetry={() => query.refetch()} />;
+  if (query.isError || !query.data) {
+    const { message, requestId } = describeQueryError(query.error, 'Could not load permissions.');
+    return <ErrorState message={message} onRetry={() => query.refetch()} requestId={requestId} />;
+  }
 
   const grouped = query.data.reduce<Record<string, typeof query.data>>((acc, p) => {
     (acc[p.resource] ??= []).push(p);
