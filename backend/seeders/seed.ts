@@ -15,6 +15,9 @@ import {Expense, ExpenseStatus} from '../src/domain/entities/expense.entity';
 import {Announcement, AnnouncementPriority} from '../src/domain/entities/announcement.entity';
 import {AnnouncementTarget} from '../src/domain/entities/announcement-target.entity';
 import {Notification, NotificationChannelType} from '../src/domain/entities/notification.entity';
+import {Event, EventStatus} from '../src/domain/entities/event.entity';
+import {EventCollection, EventCollectionStatus} from '../src/domain/entities/event-collection.entity';
+import {EventExpense} from '../src/domain/entities/event-expense.entity';
 import {ALL_PERMISSIONS} from '../src/modules/acl/permissions.constants';
 import {hashPassword} from '../src/modules/auth/password.util';
 import {config} from '../src/config/env.config';
@@ -47,6 +50,9 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     'announcements.view', 'announcements.create', 'announcements.update', 'announcements.delete', 'announcements.send',
     'notifications.view', 'notifications.create', 'notifications.update', 'notifications.delete',
     'notifications.mark_read', 'notifications.send', 'notifications.view_all',
+    'events.view', 'events.create', 'events.update', 'events.delete',
+    'event_collections.view', 'event_collections.create', 'event_collections.update', 'event_collections.delete',
+    'event_expenses.view', 'event_expenses.create', 'event_expenses.update', 'event_expenses.delete',
   ],
   Treasurer: [
     'maintenance.view', 'maintenance.collect', 'maintenance.create', 'maintenance.update', 'flats.view',
@@ -56,6 +62,10 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     'expenses.view', 'expenses.create', 'expenses.update', 'expenses.approve',
     'hall_bookings.view', // deposits/amounts are financial data Treasurer needs visibility into
     'notifications.view', 'notifications.mark_read',
+    'events.view',
+    // Collecting member contributions is treasury work, same spirit as maintenance.collect.
+    'event_collections.view', 'event_collections.create', 'event_collections.update',
+    'event_expenses.view',
   ],
   Committee: [
     'users.view', 'flats.view', 'maintenance.view', 'roles.view',
@@ -65,6 +75,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     'expenses.view',
     'announcements.view',
     'notifications.view', 'notifications.mark_read',
+    'events.view', 'event_collections.view', 'event_expenses.view',
   ],
   Resident: [
     'maintenance.view', 'flats.view',
@@ -73,6 +84,7 @@ const ROLE_PERMISSION_MAP: Record<string, string[]> = {
     'expenses.view', // transparency into society spend
     'announcements.view',
     'notifications.view', 'notifications.mark_read',
+    'events.view', 'event_collections.view', // transparency into event participation/budget, same spirit as expenses.view
   ],
   Security: [
     'flats.view', 'users.view',
@@ -99,6 +111,9 @@ async function main() {
   const announcementRepo = AppDataSource.getRepository(Announcement);
   const announcementTargetRepo = AppDataSource.getRepository(AnnouncementTarget);
   const notificationRepo = AppDataSource.getRepository(Notification);
+  const eventRepo = AppDataSource.getRepository(Event);
+  const eventCollectionRepo = AppDataSource.getRepository(EventCollection);
+  const eventExpenseRepo = AppDataSource.getRepository(EventExpense);
 
   // --- 1. Permissions catalog ---
   const permissionsByName = new Map<string, Permission>();
@@ -325,19 +340,21 @@ async function main() {
       }
     }
 
-    // --- Hall bookings: 5 across statuses/halls/dates ---
+    // --- Hall bookings: 5 across statuses/halls/date-time ranges ---
     const hallNames = ['Community Hall', 'Party Lawn'];
     const bookingSeeds = [
-      {flat: flats[2], hall: hallNames[0], daysFromNow: 5, slot: '10:00-13:00', status: HallBookingStatus.PENDING},
-      {flat: flats[3], hall: hallNames[0], daysFromNow: 10, slot: '17:00-21:00', status: HallBookingStatus.APPROVED},
-      {flat: flats[4], hall: hallNames[1], daysFromNow: 3, slot: '09:00-12:00', status: HallBookingStatus.REJECTED},
-      {flat: flats[0], hall: hallNames[1], daysFromNow: -4, slot: '18:00-22:00', status: HallBookingStatus.CANCELLED},
-      {flat: flats[1], hall: hallNames[0], daysFromNow: 15, slot: '10:00-13:00', status: HallBookingStatus.PENDING},
+      {flat: flats[2], hall: hallNames[0], daysFromNow: 5, startHour: 10, endHour: 13, status: HallBookingStatus.PENDING},
+      {flat: flats[3], hall: hallNames[0], daysFromNow: 10, startHour: 17, endHour: 21, status: HallBookingStatus.APPROVED},
+      {flat: flats[4], hall: hallNames[1], daysFromNow: 3, startHour: 9, endHour: 12, status: HallBookingStatus.REJECTED},
+      {flat: flats[0], hall: hallNames[1], daysFromNow: -4, startHour: 18, endHour: 22, status: HallBookingStatus.CANCELLED},
+      {flat: flats[1], hall: hallNames[0], daysFromNow: 15, startHour: 10, endHour: 13, status: HallBookingStatus.PENDING},
     ];
     for (const b of bookingSeeds) {
-      const bookingDate = new Date(now.getTime() + b.daysFromNow * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const dayStr = new Date(now.getTime() + b.daysFromNow * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const startDateTime = new Date(`${dayStr}T${String(b.startHour).padStart(2, '0')}:00:00`);
+      const endDateTime = new Date(`${dayStr}T${String(b.endHour).padStart(2, '0')}:00:00`);
       const existing = await hallBookingRepo.findOne({
-        where: {society_id: society.id, hall_name: b.hall, booking_date: bookingDate, time_slot: b.slot},
+        where: {society_id: society.id, hall_name: b.hall, start_datetime: startDateTime, end_datetime: endDateTime},
       });
       if (!existing) {
         await hallBookingRepo.save(
@@ -345,14 +362,101 @@ async function main() {
             society_id: society.id,
             flat_id: b.flat.id,
             hall_name: b.hall,
-            booking_date: bookingDate,
-            time_slot: b.slot,
+            start_datetime: startDateTime,
+            end_datetime: endDateTime,
             purpose: 'Family gathering',
             status: b.status,
             amount: '1500.00',
             deposit: '500.00',
           }),
         );
+      }
+    }
+
+    // --- Events: 2 per society, each with a few collections and expenses ---
+    const eventSeeds = [
+      {
+        name: 'Diwali Mela',
+        description: 'Community Diwali celebration with food stalls, diyas and a fireworks show.',
+        daysFromNow: 20,
+        status: EventStatus.UPCOMING,
+        targetAmount: '45000.00',
+      },
+      {
+        name: 'Annual Sports Day',
+        description: 'Cricket, badminton and kids relay races on the central lawn.',
+        daysFromNow: -15,
+        status: EventStatus.COMPLETED,
+        targetAmount: '25000.00',
+      },
+    ];
+    for (const e of eventSeeds) {
+      const eventDate = new Date(now.getTime() + e.daysFromNow * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      let event = await eventRepo.findOne({where: {society_id: society.id, name: e.name}});
+      if (!event) {
+        event = await eventRepo.save(
+          eventRepo.create({
+            society_id: society.id,
+            name: e.name,
+            description: e.description,
+            event_date: eventDate,
+            status: e.status,
+            target_amount: e.targetAmount,
+            created_by: secretary.id,
+          }),
+        );
+      }
+
+      // Collections: contributions from 3 of the seeded flats/residents, mixed payment states.
+      const collectionSeeds = [
+        {flat: flats[2], amountDue: '1000.00', amountPaid: '1000.00', status: EventCollectionStatus.PAID, notes: 'Paid via UPI'},
+        {flat: flats[3], amountDue: '1000.00', amountPaid: '500.00', status: EventCollectionStatus.PARTIAL, notes: 'Partial cash payment'},
+        {flat: flats[4], amountDue: '1000.00', amountPaid: '0.00', status: EventCollectionStatus.PENDING, notes: null},
+      ];
+      for (const c of collectionSeeds) {
+        const existing = await eventCollectionRepo.findOne({
+          where: {society_id: society.id, event_id: event.id, unit: c.flat.unit_no},
+        });
+        if (!existing) {
+          await eventCollectionRepo.save(
+            eventCollectionRepo.create({
+              society_id: society.id,
+              event_id: event.id,
+              member_name: `Resident of ${c.flat.block}-${c.flat.unit_no}`,
+              unit: `${c.flat.block}-${c.flat.unit_no}`,
+              amount_due: c.amountDue,
+              amount_paid: c.amountPaid,
+              payment_date: Number(c.amountPaid) > 0 ? now.toISOString().slice(0, 10) : null,
+              status: c.status,
+              notes: c.notes,
+            }),
+          );
+        }
+      }
+
+      // Expenses: 2 line items against the event's budget.
+      const eventExpenseSeeds = [
+        {title: 'Decoration and lighting', category: 'Decoration', amount: '8000.00', paidTo: 'Bright Lights Decorators'},
+        {title: 'Catering', category: 'Food', amount: '15000.00', paidTo: 'Spice Route Caterers'},
+      ];
+      for (const ee of eventExpenseSeeds) {
+        const existing = await eventExpenseRepo.findOne({
+          where: {society_id: society.id, event_id: event.id, title: ee.title},
+        });
+        if (!existing) {
+          await eventExpenseRepo.save(
+            eventExpenseRepo.create({
+              society_id: society.id,
+              event_id: event.id,
+              title: ee.title,
+              category: ee.category,
+              amount: ee.amount,
+              expense_date: eventDate,
+              paid_to: ee.paidTo,
+              notes: null,
+            }),
+          );
+        }
       }
     }
 

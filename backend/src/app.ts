@@ -24,6 +24,9 @@ import {NotificationService} from './modules/notifications/notification.service'
 import {HallBookingsService} from './modules/hall-bookings/hall-bookings.service';
 import {ExpensesService} from './modules/expenses/expenses.service';
 import {AnnouncementsService} from './modules/announcements/announcements.service';
+import {EventsService} from './modules/events/events.service';
+import {EventCollectionsService} from './modules/event-collections/event-collections.service';
+import {EventExpensesService} from './modules/event-expenses/event-expenses.service';
 
 import {buildAuthRouter} from './modules/auth/auth.controller';
 import {buildUsersRouter} from './modules/users/users.controller';
@@ -36,6 +39,9 @@ import {buildNotificationsRouter} from './modules/notifications/notification.con
 import {buildHallBookingsRouter} from './modules/hall-bookings/hall-bookings.controller';
 import {buildExpensesRouter} from './modules/expenses/expenses.controller';
 import {buildAnnouncementsRouter} from './modules/announcements/announcements.controller';
+import {buildEventsRouter} from './modules/events/events.controller';
+import {buildEventCollectionsRouter} from './modules/event-collections/event-collections.controller';
+import {buildEventExpensesRouter} from './modules/event-expenses/event-expenses.controller';
 
 /**
  * Builds a fully-wired Express app from an already-initialized DataSource.
@@ -74,6 +80,9 @@ export function createApp(dataSource: DataSource): Express {
   const hallBookingsService = new HallBookingsService(dataSource, notificationService);
   const expensesService = new ExpensesService(dataSource);
   const announcementsService = new AnnouncementsService(dataSource, notificationService);
+  const eventsService = new EventsService(dataSource);
+  const eventCollectionsService = new EventCollectionsService(dataSource, eventsService);
+  const eventExpensesService = new EventExpensesService(dataSource, eventsService);
 
   app.locals.aclService = aclService;
   app.locals.dataSource = dataSource;
@@ -100,6 +109,9 @@ export function createApp(dataSource: DataSource): Express {
   api.use('/hall-bookings', buildHallBookingsRouter(hallBookingsService));
   api.use('/expenses', buildExpensesRouter(expensesService));
   api.use('/announcements', buildAnnouncementsRouter(announcementsService));
+  api.use('/events', buildEventsRouter(eventsService));
+  api.use('/event-collections', buildEventCollectionsRouter(eventCollectionsService));
+  api.use('/event-expenses', buildEventExpensesRouter(eventExpensesService));
   api.use('/notifications', buildNotificationsRouter(notificationService));
 
   app.use(config.apiPrefix, api);

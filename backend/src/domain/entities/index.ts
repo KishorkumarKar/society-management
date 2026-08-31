@@ -14,3 +14,6 @@ export * from './expense.entity';
 export * from './announcement.entity';
 export * from './announcement-target.entity';
 export * from './notification.entity';
+export * from './event.entity';
+export * from './event-collection.entity';
+export * from './event-expense.entity';

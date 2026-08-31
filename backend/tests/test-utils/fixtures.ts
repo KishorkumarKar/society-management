@@ -84,6 +84,26 @@ export async function createUserWithRole(
   return user;
 }
 
+/** Bare user row with no role — for tests that only need a valid FK target (e.g. created_by/actorUserId). */
+export async function createUser(
+  dataSource: DataSource,
+  societyId: number,
+  overrides: Partial<Pick<User, 'name' | 'email' | 'phone'>> = {},
+): Promise<User> {
+  const userRepo = dataSource.getRepository(User);
+  return userRepo.save(
+    userRepo.create({
+      society_id: societyId,
+      flat_id: null,
+      name: overrides.name ?? 'Test User',
+      email: overrides.email ?? `user-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      phone: overrides.phone ?? null,
+      password_hash: await hashPassword(TEST_PASSWORD),
+      is_active: true,
+    }),
+  );
+}
+
 export async function createFlat(
   dataSource: DataSource,
   societyId: number,

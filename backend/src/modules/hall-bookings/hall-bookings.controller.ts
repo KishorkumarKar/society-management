@@ -27,11 +27,11 @@ export function buildHallBookingsRouter(hallBookingsService: HallBookingsService
    * /hall-bookings:
    *   post:
    *     tags: [Hall Bookings]
-   *     summary: Create a hall booking request (status starts as pending)
+   *     summary: Create a hall booking request with a start/end datetime range (status starts as pending)
    *     security: [{bearerAuth: []}]
    *     responses:
    *       201: {description: Created}
-   *       409: {description: Hall already booked for that date/time slot}
+   *       409: {description: Hall already booked for an overlapping date/time range}
    */
   router.post(
     '/',
@@ -48,7 +48,7 @@ export function buildHallBookingsRouter(hallBookingsService: HallBookingsService
    * /hall-bookings:
    *   get:
    *     tags: [Hall Bookings]
-   *     summary: List hall bookings (paginated, filterable by date range/status/hall/flat)
+   *     summary: List hall bookings (paginated, filterable by start_datetime range/status/hall/flat)
    *     security: [{bearerAuth: []}]
    */
   router.get(
@@ -57,9 +57,8 @@ export function buildHallBookingsRouter(hallBookingsService: HallBookingsService
     validate(listHallBookingsQuerySchema, 'query'),
     asyncHandler(async (req, res) => {
       const pagination = parsePagination(req.query as Record<string, unknown>);
-      const {search, bookingDate, fromDate, toDate, status, hallName, flatId, sort} = req.query as unknown as {
+      const {search, fromDate, toDate, status, hallName, flatId, sort} = req.query as unknown as {
         search?: string;
-        bookingDate?: string;
         fromDate?: string;
         toDate?: string;
         status?: string;
@@ -69,7 +68,6 @@ export function buildHallBookingsRouter(hallBookingsService: HallBookingsService
       };
       const {data, total} = await hallBookingsService.list(req.currentUser!.societyId, pagination, {
         search,
-        bookingDate,
         fromDate,
         toDate,
         status,

@@ -21,17 +21,20 @@ export enum HallBookingStatus {
 
 /**
  * Deliberately NO unique DB constraint on (society_id, hall_name,
- * booking_date, time_slot): a rejected or cancelled booking must free up
- * the slot for someone else to book again, and MySQL has no partial/filtered
- * unique index to express "unique only among pending/approved rows". That
- * rule is instead enforced in HallBookingsService.create() inside a
- * transaction with a row lock (see comments there). This index exists
- * purely to make that lookup — and the list-by-hall/date filter — fast.
+ * start_datetime, end_datetime): a rejected or cancelled booking must free
+ * up the slot for someone else to book again, and MySQL has no
+ * partial/filtered unique index to express "unique only among
+ * pending/approved rows". That rule is instead enforced in
+ * HallBookingsService.create() inside a transaction with a row lock (see
+ * comments there), using a datetime-range overlap check rather than an
+ * exact-match check — so two requests whose ranges merely *intersect*
+ * (not just exact duplicates) are still caught. This index exists purely
+ * to make that lookup — and the list-by-hall/date-range filter — fast.
  */
 @Entity('hall_bookings')
 @Index(['society_id'])
-@Index(['society_id', 'booking_date'])
-@Index(['society_id', 'hall_name', 'booking_date'])
+@Index(['society_id', 'start_datetime'])
+@Index(['society_id', 'hall_name', 'start_datetime', 'end_datetime'])
 @Index(['flat_id'])
 @Index(['status'])
 export class HallBooking {
@@ -55,11 +58,13 @@ export class HallBooking {
   @Column({type: 'varchar', length: 100})
   hall_name: string;
 
-  @Column({type: 'date'})
-  booking_date: string;
+  /** Inclusive start of the booked slot. */
+  @Column({type: 'datetime'})
+  start_datetime: Date;
 
-  @Column({type: 'varchar', length: 50})
-  time_slot: string;
+  /** Exclusive end of the booked slot (end_datetime must be > start_datetime). */
+  @Column({type: 'datetime'})
+  end_datetime: Date;
 
   @Column({type: 'varchar', length: 255, nullable: true})
   purpose: string | null;

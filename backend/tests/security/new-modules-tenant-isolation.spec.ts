@@ -10,8 +10,11 @@ import {HallBooking, HallBookingStatus} from '../../src/domain/entities/hall-boo
 import {Expense, ExpenseStatus} from '../../src/domain/entities/expense.entity';
 import {Announcement, AnnouncementPriority} from '../../src/domain/entities/announcement.entity';
 import {Notification} from '../../src/domain/entities/notification.entity';
+import {Event, EventStatus} from '../../src/domain/entities/event.entity';
+import {EventCollection} from '../../src/domain/entities/event-collection.entity';
+import {EventExpense} from '../../src/domain/entities/event-expense.entity';
 
-describe('Security: hall-bookings, expenses, announcements, notifications', () => {
+describe('Security: hall-bookings, expenses, announcements, notifications, events', () => {
   let dataSource: DataSource;
   let app: Express;
   let permissionsByName: Map<string, Permission>;
@@ -59,8 +62,8 @@ describe('Security: hall-bookings, expenses, announcements, notifications', () =
         society_id: societyB.id,
         flat_id: flatInB.id,
         hall_name: 'Community Hall',
-        booking_date: '2026-09-10',
-        time_slot: '10:00-13:00',
+        start_datetime: new Date('2026-09-10T10:00:00'),
+        end_datetime: new Date('2026-09-10T13:00:00'),
         status: HallBookingStatus.PENDING,
         amount: '0',
         deposit: '0',
@@ -92,7 +95,12 @@ describe('Security: hall-bookings, expenses, announcements, notifications', () =
     const res = await request(app)
       .post('/api/v1/hall-bookings')
       .set('Authorization', `Bearer ${token}`)
-      .send({flatId: flat.id, hallName: 'Community Hall', bookingDate: '2026-09-10', timeSlot: '10:00-13:00'});
+      .send({
+        flatId: flat.id,
+        hallName: 'Community Hall',
+        startDateTime: '2026-09-10T10:00:00',
+        endDateTime: '2026-09-10T13:00:00',
+      });
 
     expect(res.status).toBe(403);
   });
@@ -113,13 +121,226 @@ describe('Security: hall-bookings, expenses, announcements, notifications', () =
     const createRes = await request(app)
       .post('/api/v1/hall-bookings')
       .set('Authorization', `Bearer ${token}`)
-      .send({flatId: flat.id, hallName: 'Community Hall', bookingDate: '2026-09-11', timeSlot: '10:00-13:00'});
+      .send({
+        flatId: flat.id,
+        hallName: 'Community Hall',
+        startDateTime: '2026-09-11T10:00:00',
+        endDateTime: '2026-09-11T13:00:00',
+      });
 
     const approveRes = await request(app)
       .patch(`/api/v1/hall-bookings/${createRes.body.data.id}/approve`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(approveRes.status).toBe(403);
+  });
+
+  // ---------------------------------------------------------------------
+  // Events, Event Collections, Event Expenses
+  // ---------------------------------------------------------------------
+
+  it('Society A user cannot GET, UPDATE, or DELETE a Society B event', async () => {
+    const societyA = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const societyB = await createSociety(dataSource, {name: 'Society B', slug: 'society-b'});
+
+    const roleA = await createRoleWithPermissions(
+      dataSource,
+      societyA.id,
+      'Secretary',
+      [PERMISSIONS.EVENTS_VIEW, PERMISSIONS.EVENTS_UPDATE, PERMISSIONS.EVENTS_DELETE],
+      permissionsByName,
+    );
+    await createUserWithRole(dataSource, societyA.id, roleA.id, {email: 'a-secretary@example.com'});
+
+    const roleB = await createRoleWithPermissions(dataSource, societyB.id, 'Secretary B', [], permissionsByName);
+    const userInB = await createUserWithRole(dataSource, societyB.id, roleB.id, {email: 'b-secretary@example.com'});
+
+    const eventRepo = dataSource.getRepository(Event);
+    const eventInB = await eventRepo.save(
+      eventRepo.create({
+        society_id: societyB.id,
+        name: 'Society B Only Event',
+        event_date: '2026-10-31',
+        status: EventStatus.UPCOMING,
+        target_amount: '1000.00',
+        created_by: userInB.id,
+      }),
+    );
+
+    const tokenA = await loginAs('society-a', 'a-secretary@example.com');
+
+    const getRes = await request(app).get(`/api/v1/events/${eventInB.id}`).set('Authorization', `Bearer ${tokenA}`);
+    expect(getRes.status).toBe(404);
+
+    const patchRes = await request(app)
+      .patch(`/api/v1/events/${eventInB.id}`)
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({name: 'hijacked'});
+    expect(patchRes.status).toBe(404);
+
+    const deleteRes = await request(app).delete(`/api/v1/events/${eventInB.id}`).set('Authorization', `Bearer ${tokenA}`);
+    expect(deleteRes.status).toBe(404);
+  });
+
+  it('a user without events.create gets 403 on POST /events', async () => {
+    const society = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const role = await createRoleWithPermissions(dataSource, society.id, 'Bare', [PERMISSIONS.EVENTS_VIEW], permissionsByName);
+    await createUserWithRole(dataSource, society.id, role.id, {email: 'bare@example.com'});
+
+    const token = await loginAs('society-a', 'bare@example.com');
+    const res = await request(app)
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({name: 'Diwali Mela', eventDate: '2026-10-31'});
+
+    expect(res.status).toBe(403);
+  });
+
+  it('createdBy is always the authenticated actor, never a client-supplied value', async () => {
+    const society = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const role = await createRoleWithPermissions(
+      dataSource,
+      society.id,
+      'Secretary',
+      [PERMISSIONS.EVENTS_CREATE, PERMISSIONS.EVENTS_VIEW],
+      permissionsByName,
+    );
+    const secretary = await createUserWithRole(dataSource, society.id, role.id, {email: 'secretary@example.com'});
+
+    const token = await loginAs('society-a', 'secretary@example.com');
+    const res = await request(app)
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${token}`)
+      // Attempted spoof — the API doesn't even accept this field, and the service never reads it regardless.
+      .send({name: 'Diwali Mela', eventDate: '2026-10-31', createdBy: 999999});
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.created_by).toBe(secretary.id);
+  });
+
+  it('a user CANNOT attach an event_collection to an event belonging to a different society', async () => {
+    const societyA = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const societyB = await createSociety(dataSource, {name: 'Society B', slug: 'society-b'});
+
+    const roleA = await createRoleWithPermissions(
+      dataSource,
+      societyA.id,
+      'Secretary',
+      [PERMISSIONS.EVENT_COLLECTIONS_CREATE],
+      permissionsByName,
+    );
+    await createUserWithRole(dataSource, societyA.id, roleA.id, {email: 'a-secretary@example.com'});
+
+    const roleB = await createRoleWithPermissions(dataSource, societyB.id, 'Secretary B', [], permissionsByName);
+    const userInB = await createUserWithRole(dataSource, societyB.id, roleB.id, {email: 'b-secretary@example.com'});
+    const eventRepo = dataSource.getRepository(Event);
+    const eventInB = await eventRepo.save(
+      eventRepo.create({
+        society_id: societyB.id,
+        name: 'Society B Event',
+        event_date: '2026-10-31',
+        status: EventStatus.UPCOMING,
+        target_amount: '1000.00',
+        created_by: userInB.id,
+      }),
+    );
+
+    const tokenA = await loginAs('society-a', 'a-secretary@example.com');
+    const res = await request(app)
+      .post('/api/v1/event-collections')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({eventId: eventInB.id, memberName: 'Cross Tenant', unit: 'X-1', amountDue: 1000});
+
+    expect(res.status).toBe(403);
+    expect(res.body.error?.code).toBe('EVENT_SOCIETY_MISMATCH');
+  });
+
+  it('Society A user cannot GET a Society B event_collection or event_expense', async () => {
+    const societyA = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const societyB = await createSociety(dataSource, {name: 'Society B', slug: 'society-b'});
+
+    const roleA = await createRoleWithPermissions(
+      dataSource,
+      societyA.id,
+      'Secretary',
+      [PERMISSIONS.EVENT_COLLECTIONS_VIEW, PERMISSIONS.EVENT_EXPENSES_VIEW],
+      permissionsByName,
+    );
+    await createUserWithRole(dataSource, societyA.id, roleA.id, {email: 'a-secretary@example.com'});
+
+    const roleB = await createRoleWithPermissions(dataSource, societyB.id, 'Secretary B', [], permissionsByName);
+    const userInB = await createUserWithRole(dataSource, societyB.id, roleB.id, {email: 'b-secretary@example.com'});
+    const eventRepo = dataSource.getRepository(Event);
+    const eventInB = await eventRepo.save(
+      eventRepo.create({
+        society_id: societyB.id,
+        name: 'Society B Event',
+        event_date: '2026-10-31',
+        status: EventStatus.UPCOMING,
+        target_amount: '1000.00',
+        created_by: userInB.id,
+      }),
+    );
+    const collectionRepo = dataSource.getRepository(EventCollection);
+    const collectionInB = await collectionRepo.save(
+      collectionRepo.create({
+        society_id: societyB.id,
+        event_id: eventInB.id,
+        member_name: 'Someone',
+        unit: 'B-1',
+        amount_due: '1000.00',
+        amount_paid: '0.00',
+      }),
+    );
+    const expenseRepo = dataSource.getRepository(EventExpense);
+    const expenseInB = await expenseRepo.save(
+      expenseRepo.create({
+        society_id: societyB.id,
+        event_id: eventInB.id,
+        title: 'Prizes',
+        category: 'Prizes',
+        amount: '500.00',
+        expense_date: '2026-09-10',
+      }),
+    );
+
+    const tokenA = await loginAs('society-a', 'a-secretary@example.com');
+
+    const collectionRes = await request(app)
+      .get(`/api/v1/event-collections/${collectionInB.id}`)
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(collectionRes.status).toBe(404);
+
+    const expenseRes = await request(app)
+      .get(`/api/v1/event-expenses/${expenseInB.id}`)
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(expenseRes.status).toBe(404);
+  });
+
+  it('event_collections.status is auto-derived from amountDue/amountPaid over the API when omitted', async () => {
+    const society = await createSociety(dataSource, {name: 'Society A', slug: 'society-a'});
+    const role = await createRoleWithPermissions(
+      dataSource,
+      society.id,
+      'Secretary',
+      [PERMISSIONS.EVENTS_CREATE, PERMISSIONS.EVENT_COLLECTIONS_CREATE],
+      permissionsByName,
+    );
+    await createUserWithRole(dataSource, society.id, role.id, {email: 'secretary@example.com'});
+
+    const token = await loginAs('society-a', 'secretary@example.com');
+    const eventRes = await request(app)
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${token}`)
+      .send({name: 'Diwali Mela', eventDate: '2026-10-31'});
+
+    const collectionRes = await request(app)
+      .post('/api/v1/event-collections')
+      .set('Authorization', `Bearer ${token}`)
+      .send({eventId: eventRes.body.data.id, memberName: 'Rohan Kulkarni', unit: 'B-304', amountDue: 1000, amountPaid: 1000});
+
+    expect(collectionRes.status).toBe(201);
+    expect(collectionRes.body.data.status).toBe('paid');
   });
 
   // ---------------------------------------------------------------------

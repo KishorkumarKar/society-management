@@ -62,6 +62,23 @@ export const PERMISSIONS = {
   NOTIFICATIONS_SEND: 'notifications.send',
   /** Administrative: view/manage notifications belonging to OTHER users in the same society. */
   NOTIFICATIONS_VIEW_ALL: 'notifications.view_all',
+
+  EVENTS_VIEW: 'events.view',
+  EVENTS_CREATE: 'events.create',
+  EVENTS_UPDATE: 'events.update',
+  EVENTS_DELETE: 'events.delete',
+
+  /** Per-member contributions toward a specific event's target_amount. */
+  EVENT_COLLECTIONS_VIEW: 'event_collections.view',
+  EVENT_COLLECTIONS_CREATE: 'event_collections.create',
+  EVENT_COLLECTIONS_UPDATE: 'event_collections.update',
+  EVENT_COLLECTIONS_DELETE: 'event_collections.delete',
+
+  /** Spend tied to a specific event's budget — distinct from society-wide `expenses.*`. */
+  EVENT_EXPENSES_VIEW: 'event_expenses.view',
+  EVENT_EXPENSES_CREATE: 'event_expenses.create',
+  EVENT_EXPENSES_UPDATE: 'event_expenses.update',
+  EVENT_EXPENSES_DELETE: 'event_expenses.delete',
 } as const;
 
 export type PermissionName = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

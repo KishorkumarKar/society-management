@@ -11,8 +11,8 @@ import {NotificationChannelType} from '../../domain/entities/notification.entity
 export interface CreateHallBookingInput {
   flatId: number;
   hallName: string;
-  bookingDate: string | Date;
-  timeSlot: string;
+  startDateTime: string | Date;
+  endDateTime: string | Date;
   purpose?: string | null;
   amount?: number;
   deposit?: number;
@@ -20,8 +20,8 @@ export interface CreateHallBookingInput {
 
 export interface UpdateHallBookingInput {
   hallName?: string;
-  bookingDate?: string | Date;
-  timeSlot?: string;
+  startDateTime?: string | Date;
+  endDateTime?: string | Date;
   purpose?: string | null;
   amount?: number;
   deposit?: number;
@@ -55,13 +55,14 @@ export class HallBookingsService {
    * 3. societyId is always the caller's own (never from the body).
    * 4. society must be active.
    * 5. flat must belong to the same society.
-   * 6-8. date/hall/time-slot are Joi-validated upstream; re-checked for
-   *      shape here defensively.
-   * 9. conflict check — done inside a transaction with a row lock on any
-   *    existing pending/approved booking for the same slot, so two
-   *    concurrent requests can't both slip through a race and double-book
-   *    a hall (a plain SELECT-then-INSERT has a TOCTOU gap; FOR UPDATE
-   *    closes it).
+   * 6-8. hall/start/end are Joi-validated upstream (end > start); re-checked
+   *      for shape here defensively.
+   * 9. conflict check — an overlap check (not just an exact-match check),
+   *    done inside a transaction with a row lock on any existing
+   *    pending/approved booking whose [start, end) range intersects the
+   *    requested one, so two concurrent requests can't both slip through a
+   *    race and double-book a hall (a plain SELECT-then-INSERT has a TOCTOU
+   *    gap; FOR UPDATE closes it).
    * 10. create the booking.
    */
   async create(societyId: number, actorUserId: number, input: CreateHallBookingInput): Promise<HallBooking> {
@@ -78,24 +79,31 @@ export class HallBookingsService {
         throw ApiError.forbidden('Flat belongs to a different society', 'FLAT_SOCIETY_MISMATCH');
       }
 
-      const bookingDate = this.toDateOnly(input.bookingDate);
+      const startDateTime = this.toDate(input.startDateTime);
+      const endDateTime = this.toDate(input.endDateTime);
+      if (endDateTime.getTime() <= startDateTime.getTime()) {
+        throw ApiError.badRequest('endDateTime must be after startDateTime', 'INVALID_DATETIME_RANGE');
+      }
+
       const bookingRepo = manager.getRepository(HallBooking);
 
-      // Row-lock any existing blocking booking for this exact slot so a
-      // concurrent request racing us has to wait, not double-book.
+      // Row-lock any existing blocking booking whose range overlaps the
+      // requested one so a concurrent request racing us has to wait, not
+      // double-book. Two half-open ranges [aStart, aEnd) and [bStart, bEnd)
+      // overlap iff aStart < bEnd AND aEnd > bStart.
       const conflict = await bookingRepo
         .createQueryBuilder('booking')
         .setLock('pessimistic_write')
         .where('booking.society_id = :societyId', {societyId})
         .andWhere('booking.hall_name = :hallName', {hallName: input.hallName})
-        .andWhere('booking.booking_date = :bookingDate', {bookingDate})
-        .andWhere('booking.time_slot = :timeSlot', {timeSlot: input.timeSlot})
+        .andWhere('booking.start_datetime < :endDateTime', {endDateTime})
+        .andWhere('booking.end_datetime > :startDateTime', {startDateTime})
         .andWhere('booking.status IN (:...statuses)', {statuses: BLOCKING_STATUSES})
         .getOne();
 
       if (conflict) {
         throw ApiError.conflict(
-          'This hall is already booked (pending or approved) for the requested date and time slot',
+          'This hall is already booked (pending or approved) for an overlapping date/time range',
           'HALL_SLOT_TAKEN',
         );
       }
@@ -104,8 +112,8 @@ export class HallBookingsService {
         society_id: societyId,
         flat_id: input.flatId,
         hall_name: input.hallName,
-        booking_date: bookingDate,
-        time_slot: input.timeSlot,
+        start_datetime: startDateTime,
+        end_datetime: endDateTime,
         purpose: input.purpose ?? null,
         amount: String(input.amount ?? 0),
         deposit: String(input.deposit ?? 0),
@@ -130,7 +138,6 @@ export class HallBookingsService {
     pagination: PaginationQuery,
     filters: {
       search?: string;
-      bookingDate?: string | Date;
       fromDate?: string | Date;
       toDate?: string | Date;
       status?: string;
@@ -145,14 +152,13 @@ export class HallBookingsService {
     if (filters.search) {
       qb.andWhere('(booking.hall_name LIKE :search OR booking.purpose LIKE :search)', {search: `%${filters.search}%`});
     }
-    if (filters.bookingDate) {
-      qb.andWhere('booking.booking_date = :bookingDate', {bookingDate: this.toDateOnly(filters.bookingDate)});
-    }
+    // fromDate/toDate bound the booking's start_datetime — this is a
+    // "starts within this window" filter, not a range-overlap filter.
     if (filters.fromDate) {
-      qb.andWhere('booking.booking_date >= :fromDate', {fromDate: this.toDateOnly(filters.fromDate)});
+      qb.andWhere('booking.start_datetime >= :fromDate', {fromDate: this.toDate(filters.fromDate)});
     }
     if (filters.toDate) {
-      qb.andWhere('booking.booking_date <= :toDate', {toDate: this.toDateOnly(filters.toDate)});
+      qb.andWhere('booking.start_datetime <= :toDate', {toDate: this.toDate(filters.toDate)});
     }
     if (filters.status) qb.andWhere('booking.status = :status', {status: filters.status});
     if (filters.hallName) qb.andWhere('booking.hall_name = :hallName', {hallName: filters.hallName});
@@ -168,21 +174,61 @@ export class HallBookingsService {
     return {data, total};
   }
 
-  /** Plain field edits — does NOT touch status; use transitionStatus for that. */
+  /**
+   * Plain field edits — does NOT touch status; use transitionStatus for
+   * that. If the hall or either end of the range changes, the slot-overlap
+   * check runs again (same row-locked logic as create()) so an edit can't
+   * be used to sneak a booking into an already-taken range.
+   */
   async update(societyId: number, id: number, input: UpdateHallBookingInput): Promise<HallBooking> {
-    const booking = await this.findById(societyId, id);
-    if (booking.status !== HallBookingStatus.PENDING) {
-      throw ApiError.conflict('Only pending bookings can be edited', 'BOOKING_NOT_EDITABLE');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const bookingRepo = manager.getRepository(HallBooking);
+      const booking = await bookingRepo.findOne({where: {id, society_id: societyId}});
+      if (!booking) throw ApiError.notFound('Hall booking not found');
+      if (booking.status !== HallBookingStatus.PENDING) {
+        throw ApiError.conflict('Only pending bookings can be edited', 'BOOKING_NOT_EDITABLE');
+      }
 
-    if (input.hallName !== undefined) booking.hall_name = input.hallName;
-    if (input.bookingDate !== undefined) booking.booking_date = this.toDateOnly(input.bookingDate);
-    if (input.timeSlot !== undefined) booking.time_slot = input.timeSlot;
-    if (input.purpose !== undefined) booking.purpose = input.purpose;
-    if (input.amount !== undefined) booking.amount = String(input.amount);
-    if (input.deposit !== undefined) booking.deposit = String(input.deposit);
+      const nextHallName = input.hallName ?? booking.hall_name;
+      const nextStart = input.startDateTime !== undefined ? this.toDate(input.startDateTime) : booking.start_datetime;
+      const nextEnd = input.endDateTime !== undefined ? this.toDate(input.endDateTime) : booking.end_datetime;
 
-    return this.dataSource.getRepository(HallBooking).save(booking);
+      if (nextEnd.getTime() <= nextStart.getTime()) {
+        throw ApiError.badRequest('endDateTime must be after startDateTime', 'INVALID_DATETIME_RANGE');
+      }
+
+      const rangeOrHallChanged =
+        input.hallName !== undefined || input.startDateTime !== undefined || input.endDateTime !== undefined;
+
+      if (rangeOrHallChanged) {
+        const conflict = await bookingRepo
+          .createQueryBuilder('b')
+          .setLock('pessimistic_write')
+          .where('b.society_id = :societyId', {societyId})
+          .andWhere('b.id != :id', {id})
+          .andWhere('b.hall_name = :hallName', {hallName: nextHallName})
+          .andWhere('b.start_datetime < :nextEnd', {nextEnd})
+          .andWhere('b.end_datetime > :nextStart', {nextStart})
+          .andWhere('b.status IN (:...statuses)', {statuses: BLOCKING_STATUSES})
+          .getOne();
+
+        if (conflict) {
+          throw ApiError.conflict(
+            'This hall is already booked (pending or approved) for an overlapping date/time range',
+            'HALL_SLOT_TAKEN',
+          );
+        }
+      }
+
+      booking.hall_name = nextHallName;
+      booking.start_datetime = nextStart;
+      booking.end_datetime = nextEnd;
+      if (input.purpose !== undefined) booking.purpose = input.purpose;
+      if (input.amount !== undefined) booking.amount = String(input.amount);
+      if (input.deposit !== undefined) booking.deposit = String(input.deposit);
+
+      return bookingRepo.save(booking);
+    });
   }
 
   async softDelete(societyId: number, id: number): Promise<void> {
@@ -243,7 +289,7 @@ export class HallBookingsService {
                 userId: residentId,
                 type: 'hall_booking.approved',
                 title: 'Hall booking approved',
-                body: `Your booking for ${booking.hall_name} on ${booking.booking_date} (${booking.time_slot}) has been approved.`,
+                body: `Your booking for ${booking.hall_name} from ${booking.start_datetime.toISOString()} to ${booking.end_datetime.toISOString()} has been approved.`,
                 channel: NotificationChannelType.IN_APP,
               },
               manager,
@@ -256,8 +302,7 @@ export class HallBookingsService {
     });
   }
 
-  private toDateOnly(value: string | Date): string {
-    const d = value instanceof Date ? value : new Date(value);
-    return d.toISOString().slice(0, 10);
+  private toDate(value: string | Date): Date {
+    return value instanceof Date ? value : new Date(value);
   }
 }

@@ -18,6 +18,9 @@ import {
   Announcement,
   AnnouncementTarget,
   Notification,
+  Event,
+  EventCollection,
+  EventExpense,
 } from '../../domain/entities';
 
 /**
@@ -53,6 +56,9 @@ export const AppDataSource = new DataSource({
     Announcement,
     AnnouncementTarget,
     Notification,
+    Event,
+    EventCollection,
+    EventExpense,
   ],
   migrations: [__dirname + '/../../../migrations/*.{ts,js}'],
   migrationsTableName: 'typeorm_migrations',
