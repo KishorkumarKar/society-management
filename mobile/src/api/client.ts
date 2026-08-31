@@ -11,7 +11,8 @@ const API_BASE_URL =
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
   'http://localhost:3000/api/v1';
 
-  console.log("--------",API_BASE_URL);
+  console.log("+++++++++",API_BASE_URL,process.env.EXPO_PUBLIC_API_BASE_URL)
+
 logger.info('api', `Client configured`, { baseURL: API_BASE_URL });
 
 export const apiClient: AxiosInstance = axios.create({

@@ -45,7 +45,7 @@ export function LoginScreen() {
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
-    defaultValues: { society: '', identifier: '', password: '' },
+    defaultValues: { society: 'green-valley', identifier: 'admin@example.com', password: 'Password@123' },
   });
 
   const onSubmit = async (values: any) => {
