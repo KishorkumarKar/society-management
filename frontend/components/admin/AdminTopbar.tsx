@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { roleLabel } from "@/lib/data";
+import { listNotifications } from "@/lib/api/notifications";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import type { AuthenticatedUser } from "@/lib/types";
 
@@ -13,6 +14,15 @@ export default function AdminTopbar({ user }: { user: AuthenticatedUser }) {
   const { logout } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    listNotifications({ isRead: false, limit: 1 })
+      .then((res) => setUnreadCount(res.pagination.total))
+      .catch(() => {
+        // Not critical — the bell just shows no badge if this fails.
+      });
+  }, []);
 
   function handleLogout() {
     logout();
@@ -40,6 +50,18 @@ export default function AdminTopbar({ user }: { user: AuthenticatedUser }) {
         </div>
 
         <div className="flex items-center gap-4">
+          <Link
+            href="/admin/dashboard/notifications"
+            aria-label="Notifications"
+            className="relative flex h-10 w-10 items-center justify-center rounded-sm border border-ink/15 text-ink/60 transition-colors hover:border-brass hover:text-brass"
+          >
+            <Bell size={17} strokeWidth={1.75} />
+            {!!unreadCount && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rust px-1 font-mono text-[10px] text-paper">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
           <div className="hidden flex-col items-end sm:flex">
             <span className="text-sm font-medium text-ink">{user.name}</span>
             <span className="font-mono text-[11px] uppercase tracking-wider text-brass">

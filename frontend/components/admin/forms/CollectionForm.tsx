@@ -1,65 +1,52 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import type { EventCollection, CollectionStatus } from "@/lib/types";
+import {
+  createEventCollection,
+  updateEventCollection,
+  type CreateEventCollectionPayload,
+} from "@/lib/api/eventCollections";
+import type { BackendEventCollection } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 
-const STATUS_OPTIONS: { value: CollectionStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "partial", label: "Partial" },
-  { value: "paid", label: "Paid" },
-];
+const STATUS_OPTIONS = ["pending", "partial", "paid"] as const;
 
 interface CollectionFormProps {
-  initial?: EventCollection;
-  /** Pass this when adding/editing from within a single event's workspace —
-   *  the event picker is hidden and this id is used instead. */
-  fixedEventId?: string;
+  eventId: number;
+  initial?: BackendEventCollection;
   submitLabel: string;
-  onSubmit: (input: Omit<EventCollection, "id">) => void;
+  onSaved: (collection: BackendEventCollection) => void;
 }
 
-export default function CollectionForm({
-  initial,
-  fixedEventId,
-  submitLabel,
-  onSubmit,
-}: CollectionFormProps) {
-  const { user: currentUser } = useAuth();
-  const { events } = useData();
-  const isSuperAdmin = currentUser?.role === "super-admin";
+/** memberName/unit are free text on the backend (not a foreign key to
+ *  users/flats) — this records a contribution from anyone, resident or
+ *  not, toward a specific event. */
+export default function CollectionForm({ eventId, initial, submitLabel, onSaved }: CollectionFormProps) {
+  const isEditing = !!initial;
 
-  const availableEvents = isSuperAdmin
-    ? events
-    : events.filter((event) => event.societyId === currentUser?.societyId);
-
-  const [eventId, setEventId] = useState(initial?.eventId ?? fixedEventId ?? "");
-  const [memberName, setMemberName] = useState(initial?.memberName ?? "");
+  const [memberName, setMemberName] = useState(initial?.member_name ?? "");
   const [unit, setUnit] = useState(initial?.unit ?? "");
-  const [amountDue, setAmountDue] = useState(initial?.amountDue?.toString() ?? "");
-  const [amountPaid, setAmountPaid] = useState(initial?.amountPaid?.toString() ?? "0");
-  const [paymentDate, setPaymentDate] = useState(initial?.paymentDate ?? "");
-  const [status, setStatus] = useState<CollectionStatus>(initial?.status ?? "pending");
+  const [amountDue, setAmountDue] = useState(String(initial?.amount_due ?? ""));
+  const [amountPaid, setAmountPaid] = useState(String(initial?.amount_paid ?? "0"));
+  const [paymentDate, setPaymentDate] = useState(
+    initial?.payment_date ? initial.payment_date.slice(0, 10) : ""
+  );
+  const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number] | "">(initial?.status ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const finalEventId = fixedEventId ?? eventId;
-    const targetEvent = events.find((e) => e.id === finalEventId);
-    if (!targetEvent) {
-      setError("Choose an event for this collection entry.");
-      return;
-    }
-    if (!memberName.trim()) {
-      setError("Member name is required.");
+    if (!memberName.trim() || !unit.trim()) {
+      setError("Member name and unit are both required.");
       return;
     }
     const due = Number(amountDue);
@@ -73,40 +60,46 @@ export default function CollectionForm({
       return;
     }
 
-    onSubmit({
-      eventId: finalEventId,
-      societyId: targetEvent.societyId,
-      memberName,
-      unit,
-      amountDue: due,
-      amountPaid: paid,
-      paymentDate,
-      status,
-      notes,
-    });
+    setSubmitting(true);
+    try {
+      let saved: BackendEventCollection;
+      if (isEditing && initial) {
+        saved = await updateEventCollection(initial.id, {
+          memberName: memberName.trim(),
+          unit: unit.trim(),
+          amountDue: due,
+          amountPaid: paid,
+          paymentDate: paymentDate || null,
+          ...(status ? { status } : {}),
+          notes: notes || null,
+        });
+      } else {
+        const payload: CreateEventCollectionPayload = {
+          eventId,
+          memberName: memberName.trim(),
+          unit: unit.trim(),
+          amountDue: due,
+          amountPaid: paid,
+          paymentDate: paymentDate || null,
+          ...(status ? { status } : {}),
+          notes: notes || null,
+        };
+        saved = await createEventCollection(payload);
+      }
+      onSaved(saved);
+    } catch (err) {
+      setError(
+        err instanceof ApiError || err instanceof ApiNetworkError
+          ? err.message
+          : "Couldn't save this collection entry. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {!fixedEventId && (
-        <Select
-          id="collection-event"
-          label="Event"
-          required
-          value={eventId}
-          onChange={(e) => setEventId(e.target.value)}
-        >
-          <option value="" disabled>
-            Select an event
-          </option>
-          {availableEvents.map((event) => (
-            <option key={event.id} value={event.id}>
-              {event.name}
-            </option>
-          ))}
-        </Select>
-      )}
-
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <Input
           id="collection-member"
@@ -140,13 +133,13 @@ export default function CollectionForm({
         <Select
           id="collection-status"
           label="Status"
-          required
           value={status}
-          onChange={(e) => setStatus(e.target.value as CollectionStatus)}
+          onChange={(e) => setStatus(e.target.value as (typeof STATUS_OPTIONS)[number])}
         >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          <option value="">Auto (from amounts)</option>
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {s[0].toUpperCase() + s.slice(1)}
             </option>
           ))}
         </Select>
@@ -154,7 +147,7 @@ export default function CollectionForm({
 
       <Input
         id="collection-date"
-        label="Payment date"
+        label="Payment date (optional)"
         type="date"
         value={paymentDate}
         onChange={(e) => setPaymentDate(e.target.value)}
@@ -164,7 +157,7 @@ export default function CollectionForm({
         id="collection-notes"
         label="Notes"
         rows={3}
-        value={notes}
+        value={notes ?? ""}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="Optional — payment mode, reminders sent, etc."
       />
@@ -176,8 +169,8 @@ export default function CollectionForm({
       )}
 
       <div>
-        <Button type="submit" variant="primary">
-          {submitLabel}
+        <Button type="submit" variant="primary" disabled={submitting}>
+          {submitting ? "Saving…" : submitLabel}
         </Button>
       </div>
     </form>

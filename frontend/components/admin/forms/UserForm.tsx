@@ -1,146 +1,177 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import type { SocietyUser, UserRole } from "@/lib/types";
+import { useEffect, useState, type FormEvent } from "react";
+import { createUser, type CreateUserPayload } from "@/lib/api/users";
+import { listFlats } from "@/lib/api/flats";
+import { listRoles } from "@/lib/api/roles";
+import type { BackendFlat, BackendRole, BackendUser } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 
-const ASSIGNABLE_ROLES: { value: UserRole; label: string }[] = [
-  { value: "admin", label: "Society Admin" },
-  { value: "committee", label: "Committee Member" },
-  { value: "resident", label: "Resident" },
-  { value: "security", label: "Security Desk" },
-];
-
 interface UserFormProps {
-  initial?: SocietyUser;
-  onSubmit: (input: Omit<SocietyUser, "id">) => void;
+  onCreated: (user: BackendUser) => void;
   submitLabel: string;
 }
 
-export default function UserForm({ initial, onSubmit, submitLabel }: UserFormProps) {
-  const { user: currentUser } = useAuth();
-  const { societies } = useData();
-  const isSuperAdmin = currentUser?.role === "super-admin";
+/**
+ * Creates a user against the real backend (`POST /users`). There is no
+ * "edit roles" here — `updateUserSchema` doesn't accept `roleIds`, so
+ * changing an existing user's roles after creation is a separate action
+ * (see the Roles panel on the edit page) rather than part of this form.
+ */
+export default function UserForm({ onCreated, submitLabel }: UserFormProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [flatId, setFlatId] = useState<string>("");
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
 
-  const [name, setName] = useState(initial?.name ?? "");
-  const [email, setEmail] = useState(initial?.email ?? "");
-  const [phone, setPhone] = useState(initial?.phone ?? "");
-  const [password, setPassword] = useState(initial?.password ?? "");
-  const [role, setRole] = useState<UserRole>(initial?.role ?? "resident");
-  const [designation, setDesignation] = useState(initial?.designation ?? "");
-  const [unit, setUnit] = useState(initial?.unit ?? "");
-  const [societyId, setSocietyId] = useState(
-    initial?.societyId ?? (isSuperAdmin ? "" : currentUser?.societyId ?? "")
-  );
+  const [flats, setFlats] = useState<BackendFlat[] | null>(null);
+  const [roles, setRoles] = useState<BackendRole[] | null>(null);
+  const [pickersError, setPickersError] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function initials(fullName: string): string {
-    return fullName
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .join("") || "??";
+  useEffect(() => {
+    Promise.all([listFlats({ limit: 100 }), listRoles({ limit: 100 })])
+      .then(([flatsResult, rolesResult]) => {
+        setFlats(flatsResult.data);
+        setRoles(rolesResult.data);
+      })
+      .catch((err) => {
+        setPickersError(
+          err instanceof ApiError || err instanceof ApiNetworkError
+            ? err.message
+            : "Couldn't load flats/roles for this form."
+        );
+      });
+  }, []);
+
+  function toggleRole(roleId: number) {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    if (!isSuperAdmin && !currentUser?.societyId) {
-      setError("Could not determine your society.");
+    if (!email.trim() && !phone.trim()) {
+      setError("Enter an email or a phone number (at least one is required).");
       return;
     }
-    const finalSocietyId = isSuperAdmin ? societyId : currentUser!.societyId;
-    if (!finalSocietyId) {
-      setError("Choose a society for this user.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
-    onSubmit({
+    const payload: CreateUserPayload = {
       name,
-      email,
-      phone,
       password,
-      role,
-      designation,
-      unit,
-      societyId: finalSocietyId,
-      initial: initials(name),
-    });
+      ...(email.trim() ? { email: email.trim() } : {}),
+      ...(phone.trim() ? { phone: phone.trim() } : {}),
+      ...(flatId ? { flatId: Number(flatId) } : {}),
+      ...(selectedRoleIds.length ? { roleIds: selectedRoleIds } : {}),
+    };
+
+    setSubmitting(true);
+    try {
+      const created = await createUser(payload);
+      onCreated(created);
+    } catch (err) {
+      setError(
+        err instanceof ApiError || err instanceof ApiNetworkError
+          ? err.message
+          : "Couldn't create this user. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {isSuperAdmin ? (
-        <Select
-          id="user-society"
-          label="Society"
-          required
-          value={societyId}
-          onChange={(e) => setSocietyId(e.target.value)}
-        >
-          <option value="" disabled>
-            Select a society
+      <Input id="user-name" label="Full name" required value={name} onChange={(e) => setName(e.target.value)} />
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <Input
+          id="user-email"
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Leave blank if using phone"
+        />
+        <Input
+          id="user-phone"
+          label="Phone"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Leave blank if using email"
+        />
+      </div>
+
+      <Input
+        id="user-password"
+        label="Password"
+        type="password"
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="At least 8 characters"
+      />
+
+      <Select
+        id="user-flat"
+        label="Flat (optional)"
+        value={flatId}
+        onChange={(e) => setFlatId(e.target.value)}
+        disabled={!flats}
+      >
+        <option value="">No flat assigned</option>
+        {flats?.map((flat) => (
+          <option key={flat.id} value={flat.id}>
+            {flat.block} · {flat.unit_no} (floor {flat.floor})
           </option>
-          {societies.map((society) => (
-            <option key={society.id} value={society.id}>
-              {society.name}
-            </option>
+        ))}
+      </Select>
+
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-xs uppercase tracking-wider text-ink/60">
+          Roles (optional)
+        </span>
+        {pickersError && <p className="text-sm text-rust">{pickersError}</p>}
+        {!pickersError && !roles && <p className="text-sm text-ink/40">Loading roles…</p>}
+        {roles && roles.length === 0 && (
+          <p className="text-sm text-ink/40">No roles have been created for this society yet.</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {roles?.map((role) => (
+            <label
+              key={role.id}
+              className={`flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors ${
+                selectedRoleIds.includes(role.id)
+                  ? "border-brass bg-brass/10 text-brass-dark"
+                  : "border-ink/15 text-ink/70 hover:border-ink/30"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="accent-brass"
+                checked={selectedRoleIds.includes(role.id)}
+                onChange={() => toggleRole(role.id)}
+              />
+              {role.name}
+            </label>
           ))}
-        </Select>
-      ) : (
-        <Input
-          id="user-society-fixed"
-          label="Society"
-          value={currentUser?.societyName ?? ""}
-          disabled
-        />
-      )}
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Input id="user-name" label="Full name" required value={name} onChange={(e) => setName(e.target.value)} />
-        <Select id="user-role" label="Role" required value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-          {ASSIGNABLE_ROLES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </Select>
+        </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Input id="user-email" label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input id="user-phone" label="Phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Input
-          id="user-designation"
-          label="Designation"
-          required
-          list="designation-suggestions"
-          value={designation}
-          onChange={(e) => setDesignation(e.target.value)}
-          placeholder="e.g. Chairperson, Secretary, General Member"
-        />
-        <Input id="user-unit" label="Unit" required value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. B-304 or Gate 1" />
-      </div>
-      <datalist id="designation-suggestions">
-        <option value="Chairperson" />
-        <option value="Secretary" />
-        <option value="Treasurer" />
-        <option value="Committee Member" />
-        <option value="General Member" />
-        <option value="Security Supervisor" />
-        <option value="Platform Administrator" />
-      </datalist>
-
-      <Input id="user-password" label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Login password" />
 
       {error && (
         <p role="alert" className="rounded-sm border border-rust/30 bg-rust/10 px-4 py-3 text-sm text-rust">
@@ -149,8 +180,8 @@ export default function UserForm({ initial, onSubmit, submitLabel }: UserFormPro
       )}
 
       <div>
-        <Button type="submit" variant="primary">
-          {submitLabel}
+        <Button type="submit" variant="primary" disabled={submitting}>
+          {submitting ? "Creating…" : submitLabel}
         </Button>
       </div>
     </form>

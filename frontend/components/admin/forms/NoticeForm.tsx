@@ -1,86 +1,150 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import type { Notice } from "@/lib/types";
+import { useEffect, useState, type FormEvent } from "react";
+import {
+  createAnnouncement,
+  updateAnnouncement,
+  type CreateAnnouncementPayload,
+} from "@/lib/api/announcements";
+import { listRoles } from "@/lib/api/roles";
+import type { BackendAnnouncement, BackendRole } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 
-const CATEGORIES = ["Maintenance", "Event", "Governance", "Security", "General"];
+const PRIORITY_OPTIONS = ["low", "normal", "high", "urgent"] as const;
 
 interface NoticeFormProps {
-  initial?: Notice;
-  onSubmit: (input: Omit<Notice, "id">) => void;
+  initial?: BackendAnnouncement;
   submitLabel: string;
+  onSaved: (notice: BackendAnnouncement) => void;
 }
 
-export default function NoticeForm({ initial, onSubmit, submitLabel }: NoticeFormProps) {
-  const { user: currentUser } = useAuth();
-  const { societies } = useData();
-  const isSuperAdmin = currentUser?.role === "super-admin";
+export default function NoticeForm({ initial, submitLabel, onSaved }: NoticeFormProps) {
+  const isEditing = !!initial;
 
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
-  const [date, setDate] = useState(initial?.date ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
-  const [societyId, setSocietyId] = useState(
-    initial?.societyId ?? (isSuperAdmin ? "" : currentUser?.societyId ?? "")
+  const [priority, setPriority] = useState<(typeof PRIORITY_OPTIONS)[number]>(
+    initial?.priority ?? "normal"
   );
-  const [error, setError] = useState<string | null>(null);
+  const [targetRoleIds, setTargetRoleIds] = useState<number[]>(initial?.targetRoleIds ?? []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const [roles, setRoles] = useState<BackendRole[] | null>(null);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    listRoles({ limit: 100 })
+      .then((res) => setRoles(res.data))
+      .catch((err) =>
+        setRolesError(
+          err instanceof ApiError || err instanceof ApiNetworkError
+            ? err.message
+            : "Couldn't load roles for targeting."
+        )
+      );
+  }, []);
+
+  function toggleRole(roleId: number) {
+    setTargetRoleIds((prev) =>
+      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId]
+    );
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const finalSocietyId = isSuperAdmin ? societyId : currentUser?.societyId ?? "";
-    if (!finalSocietyId) {
-      setError("Choose a society for this notice.");
+    if (!title.trim() || !body.trim()) {
+      setError("Title and body are both required.");
       return;
     }
 
-    onSubmit({ title, category, date, body, societyId: finalSocietyId });
+    const payload: CreateAnnouncementPayload = {
+      title: title.trim(),
+      body: body.trim(),
+      priority,
+      targetRoleIds,
+    };
+
+    setSubmitting(true);
+    try {
+      const saved =
+        isEditing && initial ? await updateAnnouncement(initial.id, payload) : await createAnnouncement(payload);
+      onSaved(saved);
+    } catch (err) {
+      setError(
+        err instanceof ApiError || err instanceof ApiNetworkError
+          ? err.message
+          : "Couldn't save this notice. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {isSuperAdmin ? (
-        <Select
-          id="notice-society"
-          label="Society"
-          required
-          value={societyId}
-          onChange={(e) => setSocietyId(e.target.value)}
-        >
-          <option value="" disabled>
-            Select a society
-          </option>
-          {societies.map((society) => (
-            <option key={society.id} value={society.id}>
-              {society.name}
-            </option>
-          ))}
-        </Select>
-      ) : (
-        <Input id="notice-society-fixed" label="Society" value={currentUser?.societyName ?? ""} disabled />
-      )}
-
       <Input id="notice-title" label="Title" required value={title} onChange={(e) => setTitle(e.target.value)} />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Select id="notice-category" label="Category" required value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-        <Input id="notice-date" label="Date" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
+      <Textarea
+        id="notice-body"
+        label="Body"
+        required
+        rows={5}
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+      />
 
-      <Textarea id="notice-body" label="Notice text" required rows={5} value={body} onChange={(e) => setBody(e.target.value)} />
+      <Select
+        id="notice-priority"
+        label="Priority"
+        value={priority}
+        onChange={(e) => setPriority(e.target.value as (typeof PRIORITY_OPTIONS)[number])}
+      >
+        {PRIORITY_OPTIONS.map((p) => (
+          <option key={p} value={p}>
+            {p[0].toUpperCase() + p.slice(1)}
+          </option>
+        ))}
+      </Select>
+
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-xs uppercase tracking-wider text-ink/60">
+          Audience
+        </span>
+        <p className="-mt-1 text-xs text-ink/40">
+          Leave every role unchecked to post society-wide. Check specific roles to target only
+          them.
+        </p>
+        {rolesError && <p className="text-sm text-rust">{rolesError}</p>}
+        {!rolesError && !roles && <p className="text-sm text-ink/40">Loading roles…</p>}
+        <div className="flex flex-wrap gap-2">
+          {roles?.map((role) => (
+            <label
+              key={role.id}
+              className={`flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-sm transition-colors ${
+                targetRoleIds.includes(role.id)
+                  ? "border-brass bg-brass/10 text-brass-dark"
+                  : "border-ink/15 text-ink/70 hover:border-ink/30"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="accent-brass"
+                checked={targetRoleIds.includes(role.id)}
+                onChange={() => toggleRole(role.id)}
+              />
+              {role.name}
+            </label>
+          ))}
+        </div>
+      </div>
 
       {error && (
         <p role="alert" className="rounded-sm border border-rust/30 bg-rust/10 px-4 py-3 text-sm text-rust">
@@ -89,8 +153,8 @@ export default function NoticeForm({ initial, onSubmit, submitLabel }: NoticeFor
       )}
 
       <div>
-        <Button type="submit" variant="primary">
-          {submitLabel}
+        <Button type="submit" variant="primary" disabled={submitting}>
+          {submitting ? "Saving…" : submitLabel}
         </Button>
       </div>
     </form>

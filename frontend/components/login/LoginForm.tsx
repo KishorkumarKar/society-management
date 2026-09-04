@@ -2,31 +2,27 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useData } from "@/context/DataContext";
 import { useAuth } from "@/context/AuthContext";
 import { dashboardPathForRole } from "@/lib/data";
-import { PLATFORM_SCOPE } from "@/lib/types";
-import Select from "@/components/ui/Select";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
 export default function LoginForm() {
   const router = useRouter();
-  const { societies } = useData();
   const { login } = useAuth();
 
-  const [societyId, setSocietyId] = useState("");
+  const [society, setSociety] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
 
-    const result = login(societyId, identifier, password);
+    const result = await login(society, identifier, password);
 
     if (!result.success || !result.user) {
       setError(result.message ?? "Unable to sign in. Please try again.");
@@ -39,23 +35,17 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <Select
+      <Input
         id="society"
-        label="Society"
+        label="Society login code"
+        type="text"
+        placeholder="e.g. green-valley"
         required
-        value={societyId}
-        onChange={(e) => setSocietyId(e.target.value)}
-      >
-        <option value="" disabled>
-          Select your society
-        </option>
-        {societies.map((society) => (
-          <option key={society.id} value={society.id}>
-            {society.name} — {society.city}
-          </option>
-        ))}
-        <option value={PLATFORM_SCOPE}>Platform — Super Admin (all societies)</option>
-      </Select>
+        value={society}
+        onChange={(e) => setSociety(e.target.value)}
+        autoCapitalize="none"
+        autoCorrect="off"
+      />
 
       <Input
         id="identifier"

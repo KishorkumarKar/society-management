@@ -1,59 +1,73 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import { findSocietyById, eventsBySociety } from "@/lib/data";
+import { listEventExpenses } from "@/lib/api/eventExpenses";
+import { listEvents } from "@/lib/api/events";
+import type { BackendEventExpense, BackendEvent } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import PageHeader from "@/components/admin/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import RequireRole from "@/components/admin/RequireRole";
 
+function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError || err instanceof ApiNetworkError ? err.message : fallback;
+}
+
+/** Rolls up spend across every event in the caller's society —
+ *  `GET /event-expenses` without an `eventId` filter returns exactly
+ *  that (tenant-isolated, same as everything else). */
 function AllExpensesContent() {
-  const { user } = useAuth();
-  const { events, expenses, societies } = useData();
+  const [rows, setRows] = useState<BackendEventExpense[] | null>(null);
+  const [events, setEvents] = useState<Map<number, BackendEvent>>(new Map());
+  const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [eventId, setEventId] = useState("all");
 
-  if (!user) return null;
+  useEffect(() => {
+    listEventExpenses({ limit: 200, sort: "-date" })
+      .then((res) => setRows(res.data))
+      .catch((err) => setError(errorMessage(err, "Couldn't load expenses right now.")));
+    listEvents({ limit: 100 })
+      .then((res) => setEvents(new Map(res.data.map((e) => [e.id, e]))))
+      .catch(() => {
+        // Event names are a nice-to-have here; falls back to the raw id.
+      });
+  }, []);
 
-  const isSuperAdmin = user.role === "super-admin";
-  const scopedEvents = isSuperAdmin ? events : eventsBySociety(events, user.societyId);
-  const scopedEventIds = new Set(scopedEvents.map((e) => e.id));
+  const categories = useMemo(() => Array.from(new Set((rows ?? []).map((e) => e.category))).sort(), [rows]);
 
-  function eventName(id: string): string {
-    return events.find((e) => e.id === id)?.name ?? "—";
-  }
-
-  const allRows = [...expenses]
-    .filter((e) => scopedEventIds.has(e.eventId))
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
-
-  const categories = useMemo(() => Array.from(new Set(allRows.map((e) => e.category))).sort(), [allRows]);
-
-  const rows = useMemo(() => {
+  const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return allRows.filter((e) => {
-      const matchesEvent = eventId === "all" || e.eventId === eventId;
+    return (rows ?? []).filter((e) => {
+      const matchesEvent = eventId === "all" || e.event_id === Number(eventId);
       const matchesCategory = category === "all" || e.category === category;
       const matchesSearch =
-        !query ||
-        e.title.toLowerCase().includes(query) ||
-        e.paidTo.toLowerCase().includes(query);
+        !query || e.title.toLowerCase().includes(query) || (e.paid_to ?? "").toLowerCase().includes(query);
       return matchesEvent && matchesCategory && matchesSearch;
     });
-  }, [allRows, search, category, eventId]);
+  }, [rows, search, category, eventId]);
+
+  const totalSpent = filtered.reduce((sum, e) => sum + Number(e.amount), 0);
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Expenses"
-        description="Every expense recorded across all events. Open an event to add or edit line items."
-      />
+      <PageHeader title="Expenses" description="Every line item across all of your society's events." />
+
+      {error && (
+        <p role="alert" className="rounded-sm border border-rust/30 bg-rust/10 px-4 py-3 text-sm text-rust">
+          {error}
+        </p>
+      )}
+
+      <p className="text-sm text-ink/50">
+        ₹{totalSpent.toLocaleString("en-IN")} spent across {filtered.length} line item
+        {filtered.length === 1 ? "" : "s"}.
+      </p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -72,7 +86,7 @@ function AllExpensesContent() {
           className="rounded-sm border border-ink/15 bg-paper px-4 py-2.5 text-sm text-ink focus:border-brass focus:outline-none focus:ring-1 focus:ring-brass"
         >
           <option value="all">All events</option>
-          {scopedEvents.map((event) => (
+          {[...events.values()].map((event) => (
             <option key={event.id} value={event.id}>
               {event.name}
             </option>
@@ -93,12 +107,11 @@ function AllExpensesContent() {
       </div>
 
       <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[860px] text-left text-sm">
+        <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
             <tr className="border-b border-ink/10 bg-ink/[0.03] font-mono text-[11px] uppercase tracking-wider text-ink/50">
               <th className="px-5 py-3 font-medium">Title</th>
               <th className="px-5 py-3 font-medium">Event</th>
-              {isSuperAdmin && <th className="px-5 py-3 font-medium">Society</th>}
               <th className="px-5 py-3 font-medium">Category</th>
               <th className="px-5 py-3 font-medium">Paid to</th>
               <th className="px-5 py-3 font-medium">Date</th>
@@ -106,35 +119,37 @@ function AllExpensesContent() {
             </tr>
           </thead>
           <tbody className="divide-y divide-ink/10">
-            {rows.length === 0 && (
+            {rows === null && !error && (
               <tr>
-                <td colSpan={isSuperAdmin ? 7 : 6} className="px-5 py-10 text-center text-ink/40">
-                  {allRows.length === 0 ? "No expenses yet." : "No expenses match your filters."}
+                <td colSpan={6} className="px-5 py-10 text-center text-ink/40">
+                  Loading expenses…
                 </td>
               </tr>
             )}
-            {rows.map((expense) => (
+            {rows !== null && filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-ink/40">
+                  No expenses match your filters.
+                </td>
+              </tr>
+            )}
+            {filtered.map((expense) => (
               <tr key={expense.id} className="transition-colors hover:bg-ink/[0.02]">
-                <td className="px-5 py-4 font-medium text-ink">{expense.title}</td>
-                <td className="px-5 py-4">
+                <td className="px-5 py-4 font-medium text-ink">
                   <Link
-                    href={`/admin/dashboard/events/${expense.eventId}/expenses`}
-                    className="text-ink/70 hover:text-brass"
+                    href={`/admin/dashboard/events/${expense.event_id}/expenses/${expense.id}`}
+                    className="hover:text-brass"
                   >
-                    {eventName(expense.eventId)}
+                    {expense.title}
                   </Link>
                 </td>
-                {isSuperAdmin && (
-                  <td className="px-5 py-4 text-ink/60">
-                    {findSocietyById(societies, expense.societyId)?.name ?? "—"}
-                  </td>
-                )}
+                <td className="px-5 py-4 text-ink/60">{events.get(expense.event_id)?.name ?? `#${expense.event_id}`}</td>
                 <td className="px-5 py-4">
                   <Badge tone="muted">{expense.category}</Badge>
                 </td>
-                <td className="px-5 py-4 text-ink/60">{expense.paidTo || "—"}</td>
-                <td className="px-5 py-4 font-mono text-xs text-ink/50">{expense.date}</td>
-                <td className="px-5 py-4 text-right text-ink/60">₹{expense.amount.toLocaleString("en-IN")}</td>
+                <td className="px-5 py-4 text-ink/60">{expense.paid_to || "—"}</td>
+                <td className="px-5 py-4 font-mono text-xs text-ink/50">{expense.expense_date}</td>
+                <td className="px-5 py-4 text-right text-ink/60">₹{Number(expense.amount).toLocaleString("en-IN")}</td>
               </tr>
             ))}
           </tbody>

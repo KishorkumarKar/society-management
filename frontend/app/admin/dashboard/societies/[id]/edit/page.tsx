@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useData } from "@/context/DataContext";
+import { getSociety, deleteSociety } from "@/lib/api/societies";
+import type { BackendSociety } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import RequireRole from "@/components/admin/RequireRole";
 import PageHeader from "@/components/admin/PageHeader";
 import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
@@ -11,43 +14,78 @@ import Button from "@/components/ui/Button";
 
 function EditSocietyContent() {
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : "";
+  const id = typeof params.id === "string" ? Number(params.id) : NaN;
   const router = useRouter();
-  const { societies, updateSociety, deleteSociety } = useData();
 
-  const existing = societies.find((s) => s.id === id);
+  const [society, setSociety] = useState<BackendSociety | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  if (!existing) {
+  useEffect(() => {
+    if (!Number.isFinite(id)) {
+      setLoadError("Invalid society id.");
+      return;
+    }
+    getSociety(id)
+      .then(setSociety)
+      .catch((err) =>
+        setLoadError(
+          err instanceof ApiError || err instanceof ApiNetworkError
+            ? err.message
+            : "This society may have already been removed."
+        )
+      );
+  }, [id]);
+
+  async function handleDelete() {
+    try {
+      await deleteSociety(id);
+      router.push("/admin/dashboard/societies");
+    } catch (err) {
+      setActionError(
+        err instanceof ApiError || err instanceof ApiNetworkError
+          ? err.message
+          : "Couldn't delete this society."
+      );
+    }
+  }
+
+  if (loadError) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Society not found" description="This society may have already been removed." />
-        <Button href="/admin/dashboard/societies" variant="secondary" className="w-fit !border-ink/20 !text-ink hover:!border-brass hover:!text-brass">
+        <PageHeader title="Society not found" description={loadError} />
+        <Button
+          href="/admin/dashboard/societies"
+          variant="secondary"
+          className="w-fit !border-ink/20 !text-ink hover:!border-brass hover:!text-brass"
+        >
           Back to societies
         </Button>
       </div>
     );
   }
 
-  function handleDelete() {
-    deleteSociety(existing!.id);
-    router.push("/admin/dashboard/societies");
+  if (!society) {
+    return <div className="py-16 text-center text-ink/40">Loading…</div>;
   }
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        title={`Edit ${existing.name}`}
-        description="Deleting a society also removes its users and notices."
-        action={<ConfirmDeleteButton label={existing.name} onConfirm={handleDelete} />}
+        title={`Edit ${society.name}`}
+        description="Deleting a society also removes its users, flats and notices."
+        action={<ConfirmDeleteButton label={society.name} onConfirm={handleDelete} />}
       />
+      {actionError && (
+        <p role="alert" className="rounded-sm border border-rust/30 bg-rust/10 px-4 py-3 text-sm text-rust">
+          {actionError}
+        </p>
+      )}
       <Card className="max-w-2xl p-8">
         <SocietyForm
-          initial={existing}
+          initial={society}
           submitLabel="Save changes"
-          onSubmit={(input) => {
-            updateSociety(existing.id, input);
-            router.push("/admin/dashboard/societies");
-          }}
+          onSaved={() => router.push("/admin/dashboard/societies")}
         />
       </Card>
     </div>

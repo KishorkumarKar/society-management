@@ -1,35 +1,42 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Wallet, Receipt, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useData } from "@/context/DataContext";
-import { findSocietyById, eventTotals, canManage } from "@/lib/data";
+import { canManage } from "@/lib/data";
+import { getEvent } from "@/lib/api/events";
+import { listEventCollections } from "@/lib/api/eventCollections";
+import type { BackendEvent } from "@/lib/api/types";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 
-/**
- * The Details tab intentionally only loads event-level data (name,
- * description, date, target, totals). Row-level collections and expenses
- * are fetched only when the person opens those tabs — see the sibling
- * collections/page.tsx and expenses/page.tsx.
- */
+/** The Details tab intentionally only loads event-level data (name,
+ *  description, date, target) plus collections (to compute progress).
+ *  Row-level collections/expenses are fetched only when those tabs open —
+ *  see the sibling collections/page.tsx and expenses/page.tsx. */
 export default function EventDetailsPage() {
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : "";
+  const id = typeof params.id === "string" ? Number(params.id) : NaN;
   const { user } = useAuth();
-  const { events, societies, collections, expenses } = useData();
 
-  const event = events.find((e) => e.id === id);
+  const [event, setEvent] = useState<BackendEvent | null>(null);
+  const [collected, setCollected] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!Number.isFinite(id)) return;
+    getEvent(id).then(setEvent).catch(() => {});
+    listEventCollections({ eventId: id, limit: 200 })
+      .then((res) => setCollected(res.data.reduce((sum, c) => sum + Number(c.amount_paid), 0)))
+      .catch(() => {});
+  }, [id]);
+
   if (!event || !user) return null;
 
-  const isSuperAdmin = user.role === "super-admin";
   const isManager = canManage(user.role);
-  const society = findSocietyById(societies, event.societyId);
-  const totals = eventTotals(event.id, collections, expenses);
-  const progress =
-    event.targetAmount > 0 ? Math.min(100, Math.round((totals.collected / event.targetAmount) * 100)) : 0;
+  const target = Number(event.target_amount);
+  const progress = target > 0 && collected !== null ? Math.min(100, Math.round((collected / target) * 100)) : 0;
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
@@ -42,21 +49,15 @@ export default function EventDetailsPage() {
           <dl className="grid grid-cols-2 gap-4 border-t border-ink/10 pt-4 text-sm">
             <div>
               <dt className="font-mono text-[11px] uppercase tracking-wider text-ink/40">Date</dt>
-              <dd className="mt-1 text-ink">{event.date || "—"}</dd>
+              <dd className="mt-1 text-ink">{event.event_date || "—"}</dd>
             </div>
-            {isSuperAdmin && (
-              <div>
-                <dt className="font-mono text-[11px] uppercase tracking-wider text-ink/40">Society</dt>
-                <dd className="mt-1 text-ink">{society?.name ?? "—"}</dd>
-              </div>
-            )}
             <div>
               <dt className="font-mono text-[11px] uppercase tracking-wider text-ink/40">Target amount</dt>
-              <dd className="mt-1 text-ink">₹{event.targetAmount.toLocaleString("en-IN")}</dd>
+              <dd className="mt-1 text-ink">₹{target.toLocaleString("en-IN")}</dd>
             </div>
             <div>
               <dt className="font-mono text-[11px] uppercase tracking-wider text-ink/40">Collected so far</dt>
-              <dd className="mt-1 text-ink">{progress}% of target</dd>
+              <dd className="mt-1 text-ink">{collected !== null ? `${progress}% of target` : "…"}</dd>
             </div>
           </dl>
           <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10">

@@ -9,16 +9,19 @@ import {
   IdCard,
   Bell,
   Building2,
+  Home,
   ArrowLeftCircle,
   CalendarDays,
   ListChecks,
   Wallet,
   Receipt,
-  ShieldCheck,
   Shield,
   UserCog,
   Clock,
   ScanFace,
+  DoorOpen,
+  KeyRound,
+  Landmark,
   ChevronDown,
 } from "lucide-react";
 import type { UserRole } from "@/lib/types";
@@ -53,9 +56,21 @@ const NAV_ITEMS: NavEntry[] = [
     roles: ["admin", "super-admin", "resident"],
   },
   {
+    href: "/admin/dashboard/notifications",
+    label: "Notifications",
+    icon: Bell,
+    roles: ["admin", "super-admin", "resident", "security"],
+  },
+  {
     href: "/admin/dashboard/users",
     label: "Users",
     icon: Users,
+    roles: ["admin", "super-admin"],
+  },
+  {
+    href: "/admin/dashboard/flats",
+    label: "Flats",
+    icon: Home,
     roles: ["admin", "super-admin"],
   },
   {
@@ -96,6 +111,24 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   {
+    href: "/admin/dashboard/hall-bookings",
+    label: "Hall Bookings",
+    icon: DoorOpen,
+    roles: ["admin", "super-admin", "resident"],
+  },
+  {
+    href: "/admin/dashboard/maintenance",
+    label: "Maintenance",
+    icon: Landmark,
+    roles: ["admin", "super-admin"],
+  },
+  {
+    href: "/admin/dashboard/expenses",
+    label: "Expenses",
+    icon: Receipt,
+    roles: ["admin", "super-admin"],
+  },
+  {
     href: "/admin/dashboard/societies",
     label: "Societies",
     icon: Building2,
@@ -133,10 +166,10 @@ const NAV_ITEMS: NavEntry[] = [
     ],
   },
   {
-    href: "/admin/dashboard/acl",
-    label: "ACL",
-    icon: ShieldCheck,
-    roles: ["super-admin"],
+    href: "/admin/dashboard/roles",
+    label: "Roles",
+    icon: KeyRound,
+    roles: ["admin", "super-admin"],
   },
 ];
 

@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useData } from "@/context/DataContext";
+import { getEventExpense, deleteEventExpense } from "@/lib/api/eventExpenses";
+import type { BackendEventExpense } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import ConfirmDeleteButton from "@/components/admin/ConfirmDeleteButton";
 import ExpenseForm from "@/components/admin/forms/ExpenseForm";
 import Card from "@/components/ui/Card";
@@ -10,17 +13,39 @@ import RequireRole from "@/components/admin/RequireRole";
 
 function EditEventExpenseContent() {
   const params = useParams();
-  const id = typeof params.id === "string" ? params.id : "";
-  const expenseId = typeof params.expenseId === "string" ? params.expenseId : "";
+  const id = typeof params.id === "string" ? Number(params.id) : NaN;
+  const expenseId = typeof params.expenseId === "string" ? Number(params.expenseId) : NaN;
   const router = useRouter();
-  const { expenses, updateExpense, deleteExpense } = useData();
 
-  const existing = expenses.find((e) => e.id === expenseId);
+  const [existing, setExisting] = useState<BackendEventExpense | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  if (!existing) {
+  useEffect(() => {
+    if (!Number.isFinite(expenseId)) return;
+    getEventExpense(expenseId)
+      .then(setExisting)
+      .catch((err) =>
+        setLoadError(
+          err instanceof ApiError || err instanceof ApiNetworkError
+            ? err.message
+            : "This expense may have already been removed."
+        )
+      );
+  }, [expenseId]);
+
+  async function handleDelete() {
+    try {
+      await deleteEventExpense(expenseId);
+      router.push(`/admin/dashboard/events/${id}/expenses`);
+    } catch {
+      // Swallow — the confirm button is the only feedback surface here.
+    }
+  }
+
+  if (loadError) {
     return (
       <div className="flex flex-col gap-6">
-        <p className="text-sm text-ink/50">This expense may have already been removed.</p>
+        <p className="text-sm text-ink/50">{loadError}</p>
         <Button
           href={`/admin/dashboard/events/${id}/expenses`}
           variant="secondary"
@@ -32,9 +57,8 @@ function EditEventExpenseContent() {
     );
   }
 
-  function handleDelete() {
-    deleteExpense(existing!.id);
-    router.push(`/admin/dashboard/events/${id}/expenses`);
+  if (!existing) {
+    return <div className="py-16 text-center text-ink/40">Loading…</div>;
   }
 
   return (
@@ -44,13 +68,10 @@ function EditEventExpenseContent() {
         <ConfirmDeleteButton label={existing.title} onConfirm={handleDelete} />
       </div>
       <ExpenseForm
+        eventId={id}
         initial={existing}
-        fixedEventId={id}
         submitLabel="Save changes"
-        onSubmit={(input) => {
-          updateExpense(existing.id, input);
-          router.push(`/admin/dashboard/events/${id}/expenses`);
-        }}
+        onSaved={() => router.push(`/admin/dashboard/events/${id}/expenses`)}
       />
     </Card>
   );

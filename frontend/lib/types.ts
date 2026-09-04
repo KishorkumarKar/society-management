@@ -52,8 +52,45 @@ export interface Plan {
   highlighted: boolean;
 }
 
-export interface AuthenticatedUser extends SocietyUser {
+/**
+ * The signed-in user, built from a real POST /auth/login response (see
+ * lib/api/session.ts) rather than from the mock `data/users.json`. It
+ * intentionally does NOT extend `SocietyUser` any more — the backend's
+ * User entity doesn't have `unit`/`designation`/`password` fields. `id` /
+ * `societyId` / `flatId` are stringified versions of the backend's numeric
+ * ids (kept as `string` — not `number` — purely so this still type-checks
+ * against the still-mock-data admin console pages, which index the mock
+ * `data/*.json` by string id; once a given admin page is migrated to real
+ * API calls it should parse these back with `Number(...)`). `role` is a
+ * best-effort mapping from the backend's dynamic RBAC roles/permissions
+ * onto the app's fixed UserRole union (see lib/auth/roleMapping.ts) so
+ * existing route guards keep working; `roles`/`permissions` carry the real
+ * backend values for any screen that wants to check them directly instead.
+ */
+export interface AuthenticatedUser {
+  id: string;
+  societyId: string;
+  flatId: string | null;
+  name: string;
+  email: string;
+  phone: string;
+  isActive: boolean;
+  role: UserRole;
+  /** Raw backend role names, e.g. ["Secretary"]. */
+  roles: string[];
+  /** Raw backend permission strings, e.g. ["users.view", "flats.view"]. */
+  permissions: string[];
   societyName: string;
+  societySlug: string;
+  /** Single-letter/initials avatar text, derived from `name` — the
+   *  backend has no separate initials field. */
+  initial: string;
+  /** Not returned by the backend yet (no flats/unit wiring done here) —
+   *  kept so existing UI reading `user.unit` doesn't break; empty until
+   *  the flats module is migrated. */
+  unit: string;
+  /** Same as `unit` — no backend equivalent yet. */
+  designation: string;
 }
 
 export type EventStatus = "upcoming" | "ongoing" | "completed" | "cancelled";

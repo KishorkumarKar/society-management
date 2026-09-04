@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { Society } from "@/lib/types";
+import { createSociety, updateSociety, type CreateSocietyPayload } from "@/lib/api/societies";
+import type { BackendSociety } from "@/lib/api/types";
+import { ApiError, ApiNetworkError } from "@/lib/api/http";
 import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 
 interface SocietyFormProps {
-  initial?: Society;
-  onSubmit: (input: Omit<Society, "id">) => void;
+  /** Present when editing — enables the `status` toggle and disables the
+   *  (immutable, post-creation) slug field. */
+  initial?: BackendSociety;
+  onSaved: (society: BackendSociety) => void;
   submitLabel: string;
 }
 
@@ -19,75 +24,155 @@ function slugify(value: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export default function SocietyForm({ initial, onSubmit, submitLabel }: SocietyFormProps) {
+export default function SocietyForm({ initial, onSaved, submitLabel }: SocietyFormProps) {
+  const isEditing = !!initial;
+
   const [name, setName] = useState(initial?.name ?? "");
   const [city, setCity] = useState(initial?.city ?? "");
   const [address, setAddress] = useState(initial?.address ?? "");
-  const [established, setEstablished] = useState(
-    initial?.established?.toString() ?? new Date().getFullYear().toString()
+  const [slug, setSlug] = useState(initial?.slug ?? "");
+  const [slugTouched, setSlugTouched] = useState(isEditing);
+  const [userLimit, setUserLimit] = useState(String(initial?.user_limit ?? 0));
+  const [registrationNo, setRegistrationNo] = useState(initial?.registration_no ?? "");
+  const [rateType, setRateType] = useState<"PER_SQFT" | "FIXED">(
+    (initial?.rate_type as "PER_SQFT" | "FIXED") ?? "PER_SQFT"
   );
-  const [totalUnits, setTotalUnits] = useState(initial?.totalUnits?.toString() ?? "");
-  const [occupiedUnits, setOccupiedUnits] = useState(initial?.occupiedUnits?.toString() ?? "");
-  const [registrationNo, setRegistrationNo] = useState(initial?.registrationNo ?? "");
-  const [error, setError] = useState<string | null>(null);
+  const [ratePerSqft, setRatePerSqft] = useState(String(initial?.rate_per_sqft ?? 0));
+  const [status, setStatus] = useState<0 | 1>((initial?.status as 0 | 1) ?? 1);
 
-  function initialsOf(value: string): string {
-    const parts = value.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return "SO";
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugTouched) setSlug(slugify(value));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const total = Number(totalUnits);
-    const occupied = Number(occupiedUnits);
-    const year = Number(established);
-
-    if (!name.trim()) {
-      setError("Society name is required.");
-      return;
-    }
-    if (Number.isNaN(total) || total <= 0) {
-      setError("Total units must be a positive number.");
-      return;
-    }
-    if (Number.isNaN(occupied) || occupied < 0 || occupied > total) {
-      setError("Occupied units must be between 0 and total units.");
+    if (!isEditing && !/^[a-z0-9-]+$/.test(slug)) {
+      setError("Society login code can only contain lowercase letters, numbers and hyphens.");
       return;
     }
 
-    onSubmit({
-      name,
-      slug: initial?.slug ?? slugify(name),
-      city,
-      address,
-      established: Number.isNaN(year) ? new Date().getFullYear() : year,
-      totalUnits: total,
-      occupiedUnits: occupied,
-      initial: initial?.initial ?? initialsOf(name),
-      registrationNo,
-    });
+    setSubmitting(true);
+    try {
+      let saved: BackendSociety;
+      if (isEditing && initial) {
+        saved = await updateSociety(initial.id, {
+          name,
+          city,
+          address,
+          userLimit: Number(userLimit) || 0,
+          registrationNo: registrationNo || null,
+          rateType,
+          ratePerSqft: Number(ratePerSqft) || 0,
+          status,
+        });
+      } else {
+        const payload: CreateSocietyPayload = {
+          name,
+          city,
+          address,
+          slug,
+          userLimit: Number(userLimit) || 0,
+          registrationNo: registrationNo || null,
+          rateType,
+          ratePerSqft: Number(ratePerSqft) || 0,
+        };
+        saved = await createSociety(payload);
+      }
+      onSaved(saved);
+    } catch (err) {
+      setError(
+        err instanceof ApiError || err instanceof ApiNetworkError
+          ? err.message
+          : "Couldn't save this society. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <Input id="society-name" label="Society name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          id="society-name"
+          label="Society name"
+          required
+          value={name}
+          onChange={(e) => handleNameChange(e.target.value)}
+        />
         <Input id="society-city" label="City" required value={city} onChange={(e) => setCity(e.target.value)} />
       </div>
 
       <Input id="society-address" label="Address" required value={address} onChange={(e) => setAddress(e.target.value)} />
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <Input id="society-established" label="Established year" type="number" required value={established} onChange={(e) => setEstablished(e.target.value)} />
-        <Input id="society-total-units" label="Total units" type="number" required value={totalUnits} onChange={(e) => setTotalUnits(e.target.value)} />
-        <Input id="society-occupied-units" label="Occupied units" type="number" required value={occupiedUnits} onChange={(e) => setOccupiedUnits(e.target.value)} />
+      <Input
+        id="society-slug"
+        label="Society login code (slug)"
+        required
+        value={slug}
+        disabled={isEditing}
+        onChange={(e) => {
+          setSlugTouched(true);
+          setSlug(slugify(e.target.value));
+        }}
+        placeholder="e.g. green-valley"
+      />
+      <p className="-mt-3 text-xs text-ink/40">
+        {isEditing
+          ? "The login code can't be changed after a society is created — every member's login depends on it."
+          : "This is what every member of this society types into the \"Society login code\" field to sign in. Can't be changed later."}
+      </p>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <Select
+          id="society-rate-type"
+          label="Maintenance rate type"
+          value={rateType}
+          onChange={(e) => setRateType(e.target.value as "PER_SQFT" | "FIXED")}
+        >
+          <option value="PER_SQFT">Per sq. ft.</option>
+          <option value="FIXED">Fixed</option>
+        </Select>
+        <Input
+          id="society-rate"
+          label={rateType === "PER_SQFT" ? "Rate per sq. ft." : "Fixed rate"}
+          type="number"
+          min="0"
+          step="0.01"
+          value={ratePerSqft}
+          onChange={(e) => setRatePerSqft(e.target.value)}
+        />
       </div>
 
-      <Input id="society-registration" label="Registration No." required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} />
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <Input
+          id="society-user-limit"
+          label="User limit (0 = unlimited)"
+          type="number"
+          min="0"
+          value={userLimit}
+          onChange={(e) => setUserLimit(e.target.value)}
+        />
+        <Input
+          id="society-registration"
+          label="Registration No."
+          value={registrationNo ?? ""}
+          onChange={(e) => setRegistrationNo(e.target.value)}
+        />
+      </div>
+
+      {isEditing && (
+        <Select id="society-status" label="Status" value={status} onChange={(e) => setStatus(Number(e.target.value) as 0 | 1)}>
+          <option value={1}>Active</option>
+          <option value={0}>Inactive</option>
+        </Select>
+      )}
 
       {error && (
         <p role="alert" className="rounded-sm border border-rust/30 bg-rust/10 px-4 py-3 text-sm text-rust">
@@ -96,8 +181,8 @@ export default function SocietyForm({ initial, onSubmit, submitLabel }: SocietyF
       )}
 
       <div>
-        <Button type="submit" variant="primary">
-          {submitLabel}
+        <Button type="submit" variant="primary" disabled={submitting}>
+          {submitting ? "Saving…" : submitLabel}
         </Button>
       </div>
     </form>
